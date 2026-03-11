@@ -1,0 +1,20 @@
+{
+  "name": "marsen-ai-reach",
+  "version": "0.1.0",
+  "description": "Bridge messaging apps to AI-powered host",
+  "type": "module",
+  "scripts": {
+    "bot": "tsx src/bot.ts"
+  },
+  "dependencies": {
+    "grammy": "^1.31.0",
+    "node-pty": "^1.0.0",
+    "strip-ansi": "^7.1.0",
+    "dotenv": "^16.4.0"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.0",
+    "typescript": "^5.7.0",
+    "@types/node": "^22.0.0"
+  }
+}
