@@ -4,7 +4,6 @@ import { runClaude } from './claude-session.js'
 
 const bot = new Bot(BOT_TOKEN)
 let sessionActive = false
-let isFirst = true
 
 // 白名單
 bot.use(async (ctx, next) => {
@@ -14,13 +13,11 @@ bot.use(async (ctx, next) => {
 
 bot.command('start', async (ctx) => {
   sessionActive = true
-  isFirst = true
   await ctx.reply(`🚀 Session 啟動\n📁 ${WORK_DIR}\n\n傳訊息給 Claude 吧！`)
 })
 
 bot.command('stop', async (ctx) => {
   sessionActive = false
-  isFirst = true
   await ctx.reply('🛑 Session 結束')
 })
 
@@ -37,8 +34,7 @@ bot.on('message:text', async (ctx) => {
   await ctx.reply('⏳ 思考中...')
 
   try {
-    const reply = await runClaude(ctx.message.text, isFirst)
-    isFirst = false
+    const reply = await runClaude(ctx.message.text)
     console.log('[bot] reply length:', reply.length, 'preview:', reply.slice(0, 80))
 
     for (let i = 0; i < reply.length; i += 4000) {

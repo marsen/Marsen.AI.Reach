@@ -3,11 +3,8 @@ import { WORK_DIR } from './config.js'
 
 const CLAUDE_BIN = '/Users/marsen/.local/bin/claude'
 
-export async function runClaude(message: string, isFirst: boolean): Promise<string> {
-  const baseArgs = ['--print', '--output-format', 'json', '--permission-mode', 'bypassPermissions']
-  const args = isFirst
-    ? [...baseArgs, message]
-    : [...baseArgs, '--continue', message]
+export async function runClaude(message: string): Promise<string> {
+  const args = ['--print', '--output-format', 'json', '--permission-mode', 'bypassPermissions', '--continue', message]
 
   return new Promise((resolve, reject) => {
     const env = { ...process.env }
