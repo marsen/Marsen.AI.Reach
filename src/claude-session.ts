@@ -1,7 +1,5 @@
 import { spawn } from 'child_process'
-import { WORK_DIR } from './config.js'
-
-const CLAUDE_BIN = '/Users/marsen/.local/bin/claude'
+import { WORK_DIR, CLAUDE_BIN } from './config.js'
 
 export async function runClaude(message: string): Promise<string> {
   const args = ['--print', '--output-format', 'json', '--permission-mode', 'bypassPermissions', '--continue', message]
