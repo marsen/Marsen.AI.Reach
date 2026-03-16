@@ -43,6 +43,7 @@ if [ -f "$PID_FILE" ]; then
       1)
         if [ -n "$TMUX" ]; then
           tmux switch-client -t "$TMUX_SESSION"
+          exit 0
         else
           exec tmux attach -t "$TMUX_SESSION"
         fi
