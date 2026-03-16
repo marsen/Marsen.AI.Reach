@@ -1,6 +1,6 @@
 # 架構設計
 
-## 分層規劃（Clean Architecture）— 規劃中，尚未實作
+## 分層規劃（Clean Architecture）
 
 依賴方向：presentation → application → domain ← infrastructure
 
@@ -22,8 +22,13 @@ Session 是核心業務概念，放在 domain entity，而非 use case 內的 fl
 ### ClaudePort → TmuxClaudeAdapter
 透過 Port 介面隔離底層實作，未來替換成其他方案只需換 adapter，application 層不受影響。
 
+### isClaudeRunning() → pgrep
+`tmux list-panes -F "#{pane_current_command}"` 在 macOS 上回傳不可靠（回傳版本號而非進程名）。
+改用 `pgrep -f "${CLAUDE_BIN}"` 直接查詢進程，確保正確判斷 Claude 是否存活。
+
 ## 異動記錄
 
 | 日期 | 異動描述 |
 |------|---------|
+| 2026-03-16 | isClaudeRunning() 改用 pgrep；Long Polling 說明移至 modules.md（平台實作細節，非架構決策） |
 | 2026-03-14 | 初建：確立 CA 分層規劃、Session entity、手動 Wire、TmuxClaudeAdapter 決策 |

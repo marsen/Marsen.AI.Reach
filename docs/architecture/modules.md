@@ -4,18 +4,29 @@
 
 ```
 src/
-├── bot.ts            # 主程式：bot 初始化、指令、訊息處理
-├── claude-session.ts # Claude 溝通層（tmux 架構，待驗證）
-└── config.ts         # 環境變數 (BOT_TOKEN, ALLOWED_USER_ID, WORK_DIR, CLAUDE_BIN)
+├── domain/
+│   ├── entities/Session.ts       # Session 狀態 entity
+│   └── ports/ClaudePort.ts       # Claude 抽象介面
+├── application/use-cases/
+│   ├── StartSessionUseCase.ts    # 啟動/接續 session
+│   ├── StopSessionUseCase.ts     # 停止 session
+│   └── SendMessageUseCase.ts     # 傳訊息給 Claude
+├── infrastructure/
+│   ├── claude/TmuxClaudeAdapter.ts  # ClaudePort 實作（tmux）
+│   └── config/env.ts                # 環境變數
+└── presentation/bot.ts           # grammY bot，手動 DI Wire
 ```
 
 ## 模組職責
 
 | 模組 | 職責 |
 |------|------|
-| `bot.ts` | grammY bot、白名單 middleware、指令（/start /stop /status）、訊息分段回傳 |
-| `claude-session.ts` | 透過 tmux 控制 claude CLI，管理 session 存活與訊息傳遞 |
-| `config.ts` | 從 `.env` 讀取環境變數並統一匯出 |
+| `domain/entities/Session.ts` | 追蹤 session 活躍狀態（isActive / start / stop） |
+| `domain/ports/ClaudePort.ts` | 定義 `run()` / `ensure()` / `reset()` 介面 |
+| `application/use-cases/` | 協調 domain 與 port，回傳業務結果 |
+| `infrastructure/claude/TmuxClaudeAdapter.ts` | 透過 tmux 控制 Claude CLI，管理 session 存活與訊息傳遞 |
+| `infrastructure/config/env.ts` | 從 `.env` 讀取 BOT_TOKEN / ALLOWED_USER_ID / WORK_DIR / CLAUDE_BIN |
+| `presentation/bot.ts` | grammY bot（Telegram）、白名單 middleware、指令處理、啟動/離線通知。連線方式為 Long Polling（本機無公開 HTTPS，無法用 Webhook）。換平台只需替換此層。 |
 
 ## 主要流程
 
@@ -23,10 +34,16 @@ src/
 Telegram User
      │
      ▼
-  bot.ts  ──→  claude-session.ts  ──→  tmux session "claude-reach"
-     │                                         │
-     └─────────────────────────────────────────┘
-              回傳結果（分段 4000 字）
+bot.ts (Long Polling)
+     │  白名單過濾
+     ├── /start  → StartSessionUseCase → TmuxClaudeAdapter.ensure()
+     ├── /stop   → StopSessionUseCase
+     ├── /status → Session.isActive()
+     └── text    → SendMessageUseCase → TmuxClaudeAdapter.run()
+                                               │
+                                    tmux session "claude-reach"
+                                               │
+                                          Claude CLI
 ```
 
 ## 安全注意事項
@@ -39,5 +56,6 @@ Telegram User
 
 | 日期 | 異動描述 |
 |------|---------|
-| 2026-03-14 | claude-session.ts 改為 tmux 架構（待驗證） |
+| 2026-03-16 | 更新為 CA 四層目錄結構（domain / application / infrastructure / presentation） |
+| 2026-03-14 | claude-session.ts 改為 tmux 架構 |
 | 2026-03-14 | 初建 |
