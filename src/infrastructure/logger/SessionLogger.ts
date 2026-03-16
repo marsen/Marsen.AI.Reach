@@ -1,19 +1,20 @@
-import { appendFileSync, mkdirSync, readdirSync, statSync, unlinkSync } from 'fs'
+import { appendFileSync, mkdirSync, readdirSync, statSync, unlinkSync, writeFileSync } from 'fs'
 import { join, basename } from 'path'
 import { homedir } from 'os'
 
 export class SessionLogger {
   private logPath: string
 
-  constructor(workDir: string) {
+  constructor(workDir: string, baseDir = join(homedir(), '.ai-reach')) {
     const projectName = basename(workDir)
-    const logDir = join(homedir(), '.ai-reach', 'logs', projectName)
+    const logDir = join(baseDir, 'logs', projectName)
     mkdirSync(logDir, { recursive: true })
 
     const now = new Date()
     const pad = (n: number) => String(n).padStart(2, '0')
     const filename = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}-${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}.log`
     this.logPath = join(logDir, filename)
+    writeFileSync(this.logPath, '', { flag: 'a' })
   }
 
   write(role: 'User' | 'Claude', message: string): void {
@@ -21,9 +22,9 @@ export class SessionLogger {
     appendFileSync(this.logPath, `[${ts}] ${role}: ${message}\n\n`)
   }
 
-  static cleanup(workDir: string, days = 30): number {
+  static cleanup(workDir: string, days = 30, baseDir = join(homedir(), '.ai-reach')): number {
     const projectName = basename(workDir)
-    const logDir = join(homedir(), '.ai-reach', 'logs', projectName)
+    const logDir = join(baseDir, 'logs', projectName)
     const cutoff = Date.now() - days * 24 * 60 * 60 * 1000
     let count = 0
     try {
