@@ -1,6 +1,7 @@
-import { appendFileSync, unlinkSync, writeFileSync } from 'fs'
+import { appendFileSync, unlinkSync } from 'fs'
 import { join } from 'path'
 import { homedir } from 'os'
+import { createServer } from 'net'
 import { Bot } from 'grammy'
 import { BOT_TOKEN, ALLOWED_USER_ID, WORK_DIR } from '../infrastructure/config/env.js'
 import { Session } from '../domain/entities/Session.js'
@@ -97,14 +98,49 @@ bot.catch(async (err) => {
   console.error('Bot error:', err.message)
 })
 
-const PID_FILE = join(homedir(), '.ai-reach', 'bot.pid')
+// Unix socket server
+const SOCKET_PATH = join(homedir(), '.ai-reach', 'bot.sock')
 
-function cleanupPid() {
-  try { unlinkSync(PID_FILE) } catch {}
+function cleanupSocket() {
+  try { unlinkSync(SOCKET_PATH) } catch {}
 }
 
+cleanupSocket()
+
+const socketServer = createServer((socket) => {
+  let buf = ''
+  socket.on('data', (data) => {
+    buf += data.toString()
+    const lines = buf.split('\n')
+    buf = lines.pop() ?? ''
+    for (const line of lines) {
+      const cmd = line.trim()
+      if (!cmd) continue
+      if (cmd === 'status') {
+        socket.write(session.isActive() ? 'active\n' : 'inactive\n')
+        socket.end()
+      } else if (cmd === 'start') {
+        startSession.execute().then(result => {
+          socket.write(`ready:${result}\n`)
+          socket.end()
+          log(`[bot] socket start: ${result}`)
+        }).catch(err => {
+          socket.write(`error:${(err as Error).message}\n`)
+          socket.end()
+        })
+      }
+    }
+  })
+  socket.on('error', () => {})
+})
+
+socketServer.listen(SOCKET_PATH, () => {
+  log('[bot] socket listening')
+})
+
+// Signal handlers
 process.once('SIGINT', async () => {
-  cleanupPid()
+  cleanupSocket()
   await bot.api.sendMessage(ALLOWED_USER_ID, '🔴 Bot 已離線').catch(() => {})
   process.exit(0)
 })
@@ -115,24 +151,14 @@ process.on('SIGUSR1', async () => {
   log('[bot] Claude exited, session stopped')
 })
 
-process.on('SIGUSR2', async () => {
-  log('[bot] SIGUSR2: starting new session...')
-  startSession.execute().then(result => {
-    writeFileSync(join(homedir(), '.ai-reach', 'session.ready'), '')
-    log(`[bot] SIGUSR2: session started: ${result}`)
-  }).catch(err => {
-    log(`[bot] SIGUSR2: failed: ${err.message}`)
-  })
-})
-
 process.once('SIGTERM', async () => {
-  cleanupPid()
+  cleanupSocket()
   await bot.api.sendMessage(ALLOWED_USER_ID, '🔴 Bot 已離線').catch(() => {})
   process.exit(0)
 })
 
 async function notifyAndExit(reason: string): Promise<never> {
-  cleanupPid()
+  cleanupSocket()
   await bot.api.sendMessage(ALLOWED_USER_ID, `🔴 Bot 異常斷線：${reason}`).catch(() => {})
   process.exit(1)
 }
@@ -150,7 +176,6 @@ process.on('unhandledRejection', (reason) => {
 
 // 啟動時預先建立 tmux session，讓 CLI 可以直接 attach
 startSession.execute().then(result => {
-  writeFileSync(join(homedir(), '.ai-reach', 'session.ready'), '')
   log(`[bot] pre-warmed session: ${result}`)
 }).catch(err => {
   log(`[bot] pre-warm failed: ${err.message}`)
