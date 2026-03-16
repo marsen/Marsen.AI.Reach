@@ -20,6 +20,15 @@ if [ "$1" = "init" ]; then
   exec node "$PACKAGE_DIR/bin/init.mjs"
 fi
 
+# 已經在 claude-reach session 裡
+if [ -n "$TMUX" ]; then
+  CURRENT_SESSION="$(tmux display-message -p '#S' 2>/dev/null)"
+  if [ "$CURRENT_SESSION" = "$TMUX_SESSION" ]; then
+    echo "✅ 你已經在 $TMUX_SESSION session 中了"
+    exit 0
+  fi
+fi
+
 # Check config
 if [ ! -f "$ENV_FILE" ]; then
   echo "❌ 尚未設定，請先執行："
