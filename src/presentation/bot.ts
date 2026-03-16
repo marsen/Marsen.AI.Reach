@@ -1,4 +1,4 @@
-import { appendFileSync, unlinkSync } from 'fs'
+import { appendFileSync, unlinkSync, writeFileSync } from 'fs'
 import { join } from 'path'
 import { homedir } from 'os'
 import { Bot } from 'grammy'
@@ -133,6 +133,7 @@ process.on('unhandledRejection', (reason) => {
 // 啟動時預先建立 tmux session，讓 CLI 可以直接 attach
 claude.ensure().then(result => {
   session.start()
+  writeFileSync(join(homedir(), '.ai-reach', 'session.ready'), '')
   log(`[bot] pre-warmed session: ${result}`)
 }).catch(err => {
   log(`[bot] pre-warm failed: ${err.message}`)

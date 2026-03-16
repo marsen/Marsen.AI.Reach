@@ -63,20 +63,23 @@ fi
 
 # Start bot
 mkdir -p "$CONFIG_DIR"
-WORK_DIR="$(pwd)" "$TSX" "$PACKAGE_DIR/src/presentation/bot.ts" &
+WORK_DIR="$(pwd)" "$TSX" "$PACKAGE_DIR/src/presentation/bot.ts" >> "$CONFIG_DIR/bot.log" 2>&1 &
 BOT_PID=$!
 echo $BOT_PID > "$PID_FILE"
 echo "🚀 Bot 啟動中... (PID: $BOT_PID)"
 
-# Wait for tmux session
+# Wait for bot to signal session is ready
+READY_FILE="$CONFIG_DIR/session.ready"
+rm -f "$READY_FILE"
 echo "⏳ 等待 Claude session 就緒..."
-for i in $(seq 1 30); do
-  if tmux has-session -t "$TMUX_SESSION" 2>/dev/null; then
+for i in $(seq 1 60); do
+  if [ -f "$READY_FILE" ]; then
+    rm -f "$READY_FILE"
     echo "✅ 連接中..."
     exec tmux attach -t "$TMUX_SESSION"
   fi
   sleep 1
 done
 
-echo "❌ Timeout：tmux session 未就緒"
+echo "❌ Timeout：Claude session 未就緒"
 exit 1
