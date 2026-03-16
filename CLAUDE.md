@@ -15,6 +15,7 @@ Tech: Node.js + TypeScript (ESM) + grammY
 - [x] Claude binary 路徑移至 `.env`
 - [x] tmux 架構取代 spawn（session 持久化）
 - [ ] CA 分層重構（domain / application / infrastructure / presentation）
+- [ ] Bug：ensureSession() 只檢查 tmux session 存在，未確認 claude process 仍在運行
 
 ## 架構文件
 
