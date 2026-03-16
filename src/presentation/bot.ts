@@ -113,6 +113,23 @@ process.once('SIGTERM', () => {
   process.exit(0)
 })
 
+async function notifyAndExit(reason: string): Promise<never> {
+  cleanupPid()
+  await bot.api.sendMessage(ALLOWED_USER_ID, `🔴 Bot 異常斷線：${reason}`).catch(() => {})
+  process.exit(1)
+}
+
+process.on('uncaughtException', (err) => {
+  log(`[bot] uncaughtException: ${err.message}`)
+  notifyAndExit(err.message)
+})
+
+process.on('unhandledRejection', (reason) => {
+  const msg = reason instanceof Error ? reason.message : String(reason)
+  log(`[bot] unhandledRejection: ${msg}`)
+  notifyAndExit(msg)
+})
+
 // 啟動時預先建立 tmux session，讓 CLI 可以直接 attach
 claude.ensure().then(result => {
   log(`[bot] pre-warmed session: ${result}`)
@@ -126,6 +143,6 @@ bot.start({
     log(`[bot] polling started: @${info.username}`)
     await bot.api.sendMessage(ALLOWED_USER_ID, '✅ Bot 已上線，可以開始對話')
   },
-}).catch(err => log(`[bot] fatal: ${err.message}`))
+}).catch(err => notifyAndExit(err.message))
 log('🤖 Marsen.AI.Reach 啟動中...')
 log(`📁 工作目錄：${WORK_DIR}`)
