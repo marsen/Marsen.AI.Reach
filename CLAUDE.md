@@ -13,7 +13,7 @@ Tech: Node.js + TypeScript (ESM) + grammY
 - [x] 訊息分段回傳（4000 字限制）
 - [x] 文件建置（README、CLAUDE.md、docs/architecture/）
 - [x] Claude binary 路徑移至 `.env`
-- [x] tmux 架構取代 spawn（待驗證）
+- [x] tmux 架構取代 spawn（session 持久化）
 - [ ] CA 分層重構（domain / application / infrastructure / presentation）
 
 ## 架構文件
