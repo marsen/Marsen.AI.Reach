@@ -115,6 +115,16 @@ process.on('SIGUSR1', async () => {
   log('[bot] Claude exited, session stopped')
 })
 
+process.on('SIGUSR2', async () => {
+  log('[bot] SIGUSR2: starting new session...')
+  startSession.execute().then(result => {
+    writeFileSync(join(homedir(), '.ai-reach', 'session.ready'), '')
+    log(`[bot] SIGUSR2: session started: ${result}`)
+  }).catch(err => {
+    log(`[bot] SIGUSR2: failed: ${err.message}`)
+  })
+})
+
 process.once('SIGTERM', async () => {
   cleanupPid()
   await bot.api.sendMessage(ALLOWED_USER_ID, '🔴 Bot 已離線').catch(() => {})
