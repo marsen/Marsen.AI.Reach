@@ -108,8 +108,9 @@ process.once('SIGINT', async () => {
   process.exit(0)
 })
 
-process.once('SIGTERM', () => {
+process.once('SIGTERM', async () => {
   cleanupPid()
+  await bot.api.sendMessage(ALLOWED_USER_ID, '🔴 Bot 已離線').catch(() => {})
   process.exit(0)
 })
 
