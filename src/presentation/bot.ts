@@ -132,6 +132,7 @@ process.on('unhandledRejection', (reason) => {
 
 // 啟動時預先建立 tmux session，讓 CLI 可以直接 attach
 claude.ensure().then(result => {
+  session.start()
   log(`[bot] pre-warmed session: ${result}`)
 }).catch(err => {
   log(`[bot] pre-warm failed: ${err.message}`)
