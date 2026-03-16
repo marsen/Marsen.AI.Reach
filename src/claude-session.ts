@@ -1,49 +1,104 @@
-import { spawn } from 'child_process'
+import { execSync } from 'child_process'
+import { writeFileSync } from 'fs'
 import { WORK_DIR, CLAUDE_BIN } from './config.js'
 
+const SESSION = 'claude-reach'
+const PROMPT_RE = /❯\s*\r?\n[-─]+/
+const STABLE_POLLS = 3   // 連續 N 次沒變化才算穩定
+const POLL_INTERVAL = 800
+
+function tmux(args: string): string {
+  return execSync(`tmux ${args}`, { encoding: 'utf-8' })
+}
+
+function sessionExists(): boolean {
+  try {
+    tmux(`has-session -t ${SESSION}`)
+    return true
+  } catch {
+    return false
+  }
+}
+
+function capturePane(): string {
+  return tmux(`capture-pane -t ${SESSION} -p -S -1000`)
+}
+
+function cleanAnsi(s: string): string {
+  return s.replace(/\x1B\[[0-9;]*[a-zA-Z]/g, '')
+}
+
+function hasPrompt(output: string): boolean {
+  return PROMPT_RE.test(cleanAnsi(output))
+}
+
+// 等 pane 內容穩定（連續 N 次不變）且 prompt 出現
+async function waitForStablePrompt(timeout = 120000): Promise<void> {
+  const start = Date.now()
+  let lastOutput = ''
+  let stableCount = 0
+
+  while (Date.now() - start < timeout) {
+    const current = cleanAnsi(capturePane())
+
+    if (current === lastOutput && hasPrompt(current)) {
+      stableCount++
+      if (stableCount >= STABLE_POLLS) return
+    } else {
+      stableCount = 0
+    }
+
+    lastOutput = current
+    await new Promise((r) => setTimeout(r, POLL_INTERVAL))
+  }
+
+  throw new Error('等待 Claude 回應逾時')
+}
+
+async function ensureSession(): Promise<void> {
+  if (sessionExists()) return
+  console.log('[claude] starting new tmux session...')
+  tmux(`new-session -d -s ${SESSION} -x 220 -y 50`)
+  tmux(`send-keys -t ${SESSION} "cd ${WORK_DIR} && ${CLAUDE_BIN} --dangerously-skip-permissions" Enter`)
+  await waitForStablePrompt(60000)
+  console.log('[claude] session ready')
+}
+
+function extractResponse(pane: string): string {
+  const clean = cleanAnsi(pane)
+
+  // 找最後一個 ❯ <有內容>（最新的用戶訊息 echo）
+  const LAST_MSG_RE = /❯ .+/g
+  let lastMatch: RegExpExecArray | null = null
+  let m: RegExpExecArray | null
+  while ((m = LAST_MSG_RE.exec(clean)) !== null) lastMatch = m
+
+  if (!lastMatch) return clean.trim()
+
+  // 取 echo 之後到 prompt 之間的內容
+  const afterMsg = clean.slice(lastMatch.index + lastMatch[0].length)
+  const promptIdx = afterMsg.search(PROMPT_RE)
+  const raw = (promptIdx !== -1 ? afterMsg.slice(0, promptIdx) : afterMsg).trim()
+  // 移除尾巴的分隔線（─ 或 -）
+  return raw.replace(/[-─]{3,}\s*$/, '').trim()
+}
+
 export async function runClaude(message: string): Promise<string> {
-  const args = ['--print', '--output-format', 'json', '--permission-mode', 'bypassPermissions', '--continue', message]
+  await ensureSession()
 
-  return new Promise((resolve, reject) => {
-    const env = { ...process.env }
-    delete env.CLAUDECODE
+  // 用 tmux buffer 傳訊息，避免特殊字元問題
+  const tmpFile = '/tmp/claude-reach-msg.txt'
+  writeFileSync(tmpFile, message)
+  tmux(`load-buffer ${tmpFile}`)
+  tmux(`paste-buffer -t ${SESSION}`)
+  tmux(`send-keys -t ${SESSION} Enter`)
 
-    console.log('[claude] spawn:', CLAUDE_BIN, args)
-    console.log('[claude] cwd:', WORK_DIR)
-    console.log('[claude] CLAUDECODE in env:', 'CLAUDECODE' in env)
+  console.log('[claude] message sent, waiting for stable response...')
 
-    const proc = spawn(CLAUDE_BIN, args, { cwd: WORK_DIR, env, stdio: ['ignore', 'pipe', 'pipe'] })
+  await waitForStablePrompt(120000)
 
-    console.log('[claude] pid:', proc.pid)
-
-    let output = ''
-    let errOutput = ''
-
-    proc.stdout.on('data', (d) => {
-      console.log('[claude] stdout chunk:', d.toString().slice(0, 100))
-      output += d.toString()
-    })
-    proc.stderr.on('data', (d) => {
-      console.log('[claude] stderr:', d.toString().slice(0, 200))
-      errOutput += d.toString()
-    })
-
-    proc.on('close', (code) => {
-      console.log('[claude] close, code:', code, 'output length:', output.length)
-      if (code !== 0) reject(new Error(errOutput || `exit code ${code}`))
-      else {
-        try {
-          const json = JSON.parse(output)
-          resolve(json.result ?? output.trim())
-        } catch {
-          resolve(output.trim())
-        }
-      }
-    })
-
-    proc.on('error', (err) => {
-      console.log('[claude] spawn error:', err)
-      reject(err)
-    })
-  })
+  const pane = capturePane()
+  const response = extractResponse(pane)
+  console.log('[claude] response length:', response.length, 'preview:', response.slice(0, 80))
+  return response
 }
