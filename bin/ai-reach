@@ -1,0 +1,82 @@
+#!/bin/bash
+
+# Resolve symlinks to find package directory
+SOURCE="$0"
+while [ -h "$SOURCE" ]; do
+  DIR="$(cd -P "$(dirname "$SOURCE")" && pwd)"
+  SOURCE="$(readlink "$SOURCE")"
+  [[ "$SOURCE" != /* ]] && SOURCE="$DIR/$SOURCE"
+done
+PACKAGE_DIR="$(cd -P "$(dirname "$SOURCE")/.." && pwd)"
+
+CONFIG_DIR="$HOME/.ai-reach"
+PID_FILE="$CONFIG_DIR/bot.pid"
+ENV_FILE="$CONFIG_DIR/.env"
+TMUX_SESSION="claude-reach"
+TSX="$PACKAGE_DIR/node_modules/.bin/tsx"
+
+# Handle subcommands
+if [ "$1" = "init" ]; then
+  exec node "$PACKAGE_DIR/bin/init.mjs"
+fi
+
+# Check config
+if [ ! -f "$ENV_FILE" ]; then
+  echo "❌ 尚未設定，請先執行："
+  echo "   ai-reach init"
+  exit 1
+fi
+
+# Single instance check
+if [ -f "$PID_FILE" ]; then
+  PID=$(cat "$PID_FILE")
+  if kill -0 "$PID" 2>/dev/null; then
+    echo "⚠️  Bot 已在執行中 (PID: $PID)"
+    echo ""
+    echo "  [1] 進入現有 session"
+    echo "  [2] 停止舊的，用當前目錄重啟"
+    echo "  [3] 取消"
+    echo ""
+    printf "請選擇 [1-3]: "
+    read choice
+    case "$choice" in
+      1)
+        exec tmux attach -t "$TMUX_SESSION"
+        ;;
+      2)
+        kill "$PID"
+        rm -f "$PID_FILE"
+        sleep 2
+        ;;
+      3)
+        exit 0
+        ;;
+      *)
+        echo "無效選項"
+        exit 1
+        ;;
+    esac
+  else
+    rm -f "$PID_FILE"
+  fi
+fi
+
+# Start bot
+mkdir -p "$CONFIG_DIR"
+WORK_DIR="$(pwd)" "$TSX" "$PACKAGE_DIR/src/presentation/bot.ts" &
+BOT_PID=$!
+echo $BOT_PID > "$PID_FILE"
+echo "🚀 Bot 啟動中... (PID: $BOT_PID)"
+
+# Wait for tmux session
+echo "⏳ 等待 Claude session 就緒..."
+for i in $(seq 1 30); do
+  if tmux has-session -t "$TMUX_SESSION" 2>/dev/null; then
+    echo "✅ 連接中..."
+    exec tmux attach -t "$TMUX_SESSION"
+  fi
+  sleep 1
+done
+
+echo "❌ Timeout：tmux session 未就緒"
+exit 1

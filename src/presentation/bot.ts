@@ -1,4 +1,6 @@
-import { appendFileSync } from 'fs'
+import { appendFileSync, unlinkSync } from 'fs'
+import { join } from 'path'
+import { homedir } from 'os'
 import { Bot } from 'grammy'
 import { BOT_TOKEN, ALLOWED_USER_ID, WORK_DIR } from '../infrastructure/config/env.js'
 import { Session } from '../domain/entities/Session.js'
@@ -6,6 +8,7 @@ import { TmuxClaudeAdapter } from '../infrastructure/claude/TmuxClaudeAdapter.js
 import { StartSessionUseCase } from '../application/use-cases/StartSessionUseCase.js'
 import { StopSessionUseCase } from '../application/use-cases/StopSessionUseCase.js'
 import { SendMessageUseCase } from '../application/use-cases/SendMessageUseCase.js'
+import { SessionLogger } from '../infrastructure/logger/SessionLogger.js'
 
 function log(msg: string) {
   const line = `[${new Date().toISOString()}] ${msg}\n`
@@ -19,6 +22,8 @@ const claude = new TmuxClaudeAdapter()
 const startSession = new StartSessionUseCase(claude, session)
 const stopSession = new StopSessionUseCase(session)
 const sendMessage = new SendMessageUseCase(claude, session)
+
+let logger: SessionLogger | null = null
 
 const bot = new Bot(BOT_TOKEN)
 
@@ -36,6 +41,7 @@ bot.command('start', async (ctx) => {
   log(`[bot] /start from ${ctx.from?.id}`)
   await ctx.reply('⏳ 啟動中...')
   const result = await startSession.execute()
+  logger = new SessionLogger(WORK_DIR)
   console.log('[bot] session result:', result)
   if (result === 'resumed') {
     await ctx.reply(`🔄 接續對話\n📁 ${WORK_DIR}`)
@@ -46,11 +52,17 @@ bot.command('start', async (ctx) => {
 
 bot.command('stop', async (ctx) => {
   stopSession.execute()
+  logger = null
   await ctx.reply('🛑 Session 結束')
 })
 
 bot.command('status', async (ctx) => {
   await ctx.reply(session.isActive() ? '✅ Session 進行中' : '💤 沒有 session')
+})
+
+bot.command('cleanup', async (ctx) => {
+  const count = SessionLogger.cleanup(WORK_DIR)
+  await ctx.reply(`🗑️ 已刪除 ${count} 筆 30 天前的 log`)
 })
 
 bot.on('message:text', async (ctx) => {
@@ -63,7 +75,11 @@ bot.on('message:text', async (ctx) => {
   await ctx.reply('⏳ 思考中...')
 
   try {
-    const reply = await sendMessage.execute(ctx.message.text)
+    const userMsg = ctx.message.text
+    logger?.write('User', userMsg)
+
+    const reply = await sendMessage.execute(userMsg)
+    logger?.write('Claude', reply)
     console.log('[bot] reply length:', reply.length, 'preview:', reply.slice(0, 80))
 
     for (let i = 0; i < reply.length; i += 4000) {
@@ -80,9 +96,28 @@ bot.catch(async (err) => {
   console.error('Bot error:', err.message)
 })
 
+const PID_FILE = join(homedir(), '.ai-reach', 'bot.pid')
+
+function cleanupPid() {
+  try { unlinkSync(PID_FILE) } catch {}
+}
+
 process.once('SIGINT', async () => {
+  cleanupPid()
   await bot.api.sendMessage(ALLOWED_USER_ID, '🔴 Bot 已離線').catch(() => {})
   process.exit(0)
+})
+
+process.once('SIGTERM', () => {
+  cleanupPid()
+  process.exit(0)
+})
+
+// 啟動時預先建立 tmux session，讓 CLI 可以直接 attach
+claude.ensure().then(result => {
+  log(`[bot] pre-warmed session: ${result}`)
+}).catch(err => {
+  log(`[bot] pre-warm failed: ${err.message}`)
 })
 
 bot.api.sendMessage(ALLOWED_USER_ID, '⏳ Bot 啟動中，請稍候...').catch(() => {})
