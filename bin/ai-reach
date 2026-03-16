@@ -40,16 +40,47 @@ fi
 if [ -f "$PID_FILE" ]; then
   PID=$(cat "$PID_FILE")
   if kill -0 "$PID" 2>/dev/null; then
+    if tmux has-session -t "$TMUX_SESSION" 2>/dev/null; then
+      SESSION_STATUS="進行中"
+      HAS_SESSION=true
+    else
+      SESSION_STATUS="無"
+      HAS_SESSION=false
+    fi
+
     echo "⚠️  Bot 已在執行中 (PID: $PID)"
+    echo "    Claude session：$SESSION_STATUS"
     echo ""
-    echo "  [1] 進入現有 session"
-    echo "  [2] 停止舊的，用當前目錄重啟"
-    echo "  [3] 取消"
-    echo ""
-    printf "請選擇 [1-3]: "
-    read choice
+    if [ "$HAS_SESSION" = "true" ]; then
+      echo "  [1] 進入現有 session"
+      echo "  [2] 停止舊的，用當前目錄重啟"
+      echo "  [3] 取消"
+      echo ""
+      printf "請選擇 [1-3]: "
+      read choice
+    else
+      echo "  [1] 啟動新 session"
+      echo "  [2] 取消"
+      echo ""
+      printf "請選擇 [1-2]: "
+      read choice
+      # 對齊選項語意：無 session 時 [2]=取消
+      [ "$choice" = "2" ] && choice="3"
+    fi
     case "$choice" in
       1)
+        if [ "$HAS_SESSION" = "false" ]; then
+          rm -f "$READY_FILE"
+          kill -USR2 "$PID"
+          echo "⏳ 等待 Claude session 就緒..."
+          for i in $(seq 1 60); do
+            if [ -f "$READY_FILE" ]; then
+              rm -f "$READY_FILE"
+              break
+            fi
+            sleep 1
+          done
+        fi
         if [ -n "$TMUX" ]; then
           tmux switch-client -t "$TMUX_SESSION"
           exit 0
