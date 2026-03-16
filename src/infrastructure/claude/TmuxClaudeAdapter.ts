@@ -73,7 +73,15 @@ async function waitForStablePrompt(timeout = 120000): Promise<void> {
   throw new Error('等待 Claude 回應逾時')
 }
 
+let ensuringPromise: Promise<'new' | 'resumed'> | null = null
+
 async function ensureSession(): Promise<'new' | 'resumed'> {
+  if (ensuringPromise) return ensuringPromise
+  ensuringPromise = _ensureSession().finally(() => { ensuringPromise = null })
+  return ensuringPromise
+}
+
+async function _ensureSession(): Promise<'new' | 'resumed'> {
   if (sessionExists() && isClaudeRunning()) return 'resumed'
   if (sessionExists()) tmux(`kill-session -t ${SESSION}`)
   await createSession()
