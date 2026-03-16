@@ -30,10 +30,17 @@ function isClaudeRunning(): boolean {
   }
 }
 
+let botPid = process.pid
+
+export function setBotPid(pid: number): void {
+  botPid = pid
+}
+
 async function createSession(): Promise<void> {
   console.log('[claude] starting new tmux session...')
   tmux(`new-session -d -s ${SESSION} -x 220 -y 50`)
-  tmux(`send-keys -t ${SESSION} "cd ${WORK_DIR} && ${CLAUDE_BIN} --dangerously-skip-permissions" Enter`)
+  const cmd = `cd ${WORK_DIR} && ${CLAUDE_BIN} --dangerously-skip-permissions; kill -USR1 ${botPid} 2>/dev/null; tmux kill-session -t ${SESSION}`
+  tmux(`send-keys -t ${SESSION} "${cmd}" Enter`)
   await waitForStablePrompt(60000)
   console.log('[claude] session ready')
 }

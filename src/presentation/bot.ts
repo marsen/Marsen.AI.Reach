@@ -4,7 +4,7 @@ import { homedir } from 'os'
 import { Bot } from 'grammy'
 import { BOT_TOKEN, ALLOWED_USER_ID, WORK_DIR } from '../infrastructure/config/env.js'
 import { Session } from '../domain/entities/Session.js'
-import { TmuxClaudeAdapter } from '../infrastructure/claude/TmuxClaudeAdapter.js'
+import { TmuxClaudeAdapter, setBotPid } from '../infrastructure/claude/TmuxClaudeAdapter.js'
 import { StartSessionUseCase } from '../application/use-cases/StartSessionUseCase.js'
 import { StopSessionUseCase } from '../application/use-cases/StopSessionUseCase.js'
 import { SendMessageUseCase } from '../application/use-cases/SendMessageUseCase.js'
@@ -17,6 +17,7 @@ function log(msg: string) {
 }
 
 // 手動 wire
+setBotPid(process.pid)
 const session = new Session()
 const claude = new TmuxClaudeAdapter()
 const startSession = new StartSessionUseCase(claude, session)
@@ -106,6 +107,12 @@ process.once('SIGINT', async () => {
   cleanupPid()
   await bot.api.sendMessage(ALLOWED_USER_ID, '🔴 Bot 已離線').catch(() => {})
   process.exit(0)
+})
+
+process.on('SIGUSR1', async () => {
+  stopSession.execute()
+  await bot.api.sendMessage(ALLOWED_USER_ID, '💤 Claude session 已結束').catch(() => {})
+  log('[bot] Claude exited, session stopped')
 })
 
 process.once('SIGTERM', async () => {

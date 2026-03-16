@@ -27,4 +27,11 @@ describe('Session', () => {
     session.stop()
     expect(session.isActive()).toBe(false)
   })
+
+  it('stop() 後再 start() 應變 active', () => {
+    session.start()
+    session.stop()
+    session.start()
+    expect(session.isActive()).toBe(true)
+  })
 })
