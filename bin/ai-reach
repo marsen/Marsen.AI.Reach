@@ -42,7 +42,7 @@ if [ -f "$PID_FILE" ]; then
     case "$choice" in
       1)
         if [ -n "$TMUX" ]; then
-          exec tmux switch-client -t "$TMUX_SESSION"
+          tmux switch-client -t "$TMUX_SESSION"
         else
           exec tmux attach -t "$TMUX_SESSION"
         fi
@@ -81,7 +81,7 @@ for i in $(seq 1 60); do
     rm -f "$READY_FILE"
     echo "✅ 連接中..."
     if [ -n "$TMUX" ]; then
-      exec tmux switch-client -t "$TMUX_SESSION"
+      tmux switch-client -t "$TMUX_SESSION"
     else
       exec tmux attach -t "$TMUX_SESSION"
     fi
