@@ -19,7 +19,7 @@ Tech: Node.js + TypeScript (ESM) + grammY
 - [x] Unix socket 取代 PID file（IPC）
 - [x] SessionLogger（~/.ai-reach/logs/{project}/）
 - [x] ai-reach CLI 工具（多專案、單實例防呆）
-- [ ] US1-0：npm install -g github:marsen/marsen-ai-reach 安裝測試
+- [x] US1-0：npm install -g github:marsen/marsen-ai-reach 安裝測試
 
 ## 架構文件
 
