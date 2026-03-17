@@ -3,18 +3,24 @@
   "version": "0.1.0",
   "description": "Bridge messaging apps to AI-powered host",
   "type": "module",
+  "bin": {
+    "ai-reach": "bin/ai-reach"
+  },
   "scripts": {
-    "bot": "tsx src/presentation/bot.ts"
+    "bot": "tsx src/presentation/bot.ts",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
+    "dotenv": "^16.4.0",
     "grammy": "^1.31.0",
     "node-pty": "^1.0.0",
-    "strip-ansi": "^7.1.0",
-    "dotenv": "^16.4.0"
+    "strip-ansi": "^7.1.0"
   },
   "devDependencies": {
+    "@types/node": "^22.0.0",
     "tsx": "^4.19.0",
     "typescript": "^5.7.0",
-    "@types/node": "^22.0.0"
+    "vitest": "^4.1.0"
   }
 }

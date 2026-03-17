@@ -1,11 +1,15 @@
-import { appendFileSync } from 'fs'
+import { appendFileSync, unlinkSync } from 'fs'
+import { join } from 'path'
+import { homedir } from 'os'
+import { createServer } from 'net'
 import { Bot } from 'grammy'
 import { BOT_TOKEN, ALLOWED_USER_ID, WORK_DIR } from '../infrastructure/config/env.js'
 import { Session } from '../domain/entities/Session.js'
-import { TmuxClaudeAdapter } from '../infrastructure/claude/TmuxClaudeAdapter.js'
+import { TmuxClaudeAdapter, setBotPid } from '../infrastructure/claude/TmuxClaudeAdapter.js'
 import { StartSessionUseCase } from '../application/use-cases/StartSessionUseCase.js'
 import { StopSessionUseCase } from '../application/use-cases/StopSessionUseCase.js'
 import { SendMessageUseCase } from '../application/use-cases/SendMessageUseCase.js'
+import { SessionLogger } from '../infrastructure/logger/SessionLogger.js'
 
 function log(msg: string) {
   const line = `[${new Date().toISOString()}] ${msg}\n`
@@ -14,11 +18,18 @@ function log(msg: string) {
 }
 
 // 手動 wire
+setBotPid(process.pid)
 const session = new Session()
 const claude = new TmuxClaudeAdapter()
 const startSession = new StartSessionUseCase(claude, session)
 const stopSession = new StopSessionUseCase(session)
 const sendMessage = new SendMessageUseCase(claude, session)
+
+let logger: SessionLogger | null = null
+
+function ensureLogger() {
+  if (!logger) logger = new SessionLogger(WORK_DIR)
+}
 
 const bot = new Bot(BOT_TOKEN)
 
@@ -36,6 +47,7 @@ bot.command('start', async (ctx) => {
   log(`[bot] /start from ${ctx.from?.id}`)
   await ctx.reply('⏳ 啟動中...')
   const result = await startSession.execute()
+  ensureLogger()
   console.log('[bot] session result:', result)
   if (result === 'resumed') {
     await ctx.reply(`🔄 接續對話\n📁 ${WORK_DIR}`)
@@ -46,11 +58,17 @@ bot.command('start', async (ctx) => {
 
 bot.command('stop', async (ctx) => {
   stopSession.execute()
+  logger = null
   await ctx.reply('🛑 Session 結束')
 })
 
 bot.command('status', async (ctx) => {
   await ctx.reply(session.isActive() ? '✅ Session 進行中' : '💤 沒有 session')
+})
+
+bot.command('cleanup', async (ctx) => {
+  const count = SessionLogger.cleanup(WORK_DIR)
+  await ctx.reply(`🗑️ 已刪除 ${count} 筆 30 天前的 log`)
 })
 
 bot.on('message:text', async (ctx) => {
@@ -63,7 +81,11 @@ bot.on('message:text', async (ctx) => {
   await ctx.reply('⏳ 思考中...')
 
   try {
-    const reply = await sendMessage.execute(ctx.message.text)
+    const userMsg = ctx.message.text
+    logger?.write('User', userMsg)
+
+    const reply = await sendMessage.execute(userMsg)
+    logger?.write('Claude', reply)
     console.log('[bot] reply length:', reply.length, 'preview:', reply.slice(0, 80))
 
     for (let i = 0; i < reply.length; i += 4000) {
@@ -80,9 +102,89 @@ bot.catch(async (err) => {
   console.error('Bot error:', err.message)
 })
 
+// Unix socket server
+const SOCKET_PATH = join(homedir(), '.ai-reach', 'bot.sock')
+
+function cleanupSocket() {
+  try { unlinkSync(SOCKET_PATH) } catch {}
+}
+
+cleanupSocket()
+
+const socketServer = createServer((socket) => {
+  let buf = ''
+  socket.on('data', (data) => {
+    buf += data.toString()
+    const lines = buf.split('\n')
+    buf = lines.pop() ?? ''
+    for (const line of lines) {
+      const cmd = line.trim()
+      if (!cmd) continue
+      if (cmd === 'status') {
+        socket.write(session.isActive() ? 'active\n' : 'inactive\n')
+        socket.end()
+      } else if (cmd === 'start') {
+        startSession.execute().then(result => {
+          ensureLogger()
+          socket.write(`ready:${result}\n`)
+          socket.end()
+          log(`[bot] socket start: ${result}`)
+        }).catch(err => {
+          socket.write(`error:${(err as Error).message}\n`)
+          socket.end()
+        })
+      }
+    }
+  })
+  socket.on('error', () => {})
+})
+
+socketServer.listen(SOCKET_PATH, () => {
+  log('[bot] socket listening')
+})
+
+// Signal handlers
 process.once('SIGINT', async () => {
+  cleanupSocket()
   await bot.api.sendMessage(ALLOWED_USER_ID, '🔴 Bot 已離線').catch(() => {})
   process.exit(0)
+})
+
+process.on('SIGUSR1', async () => {
+  stopSession.execute()
+  await bot.api.sendMessage(ALLOWED_USER_ID, '💤 Claude session 已結束').catch(() => {})
+  log('[bot] Claude exited, session stopped')
+})
+
+process.once('SIGTERM', async () => {
+  cleanupSocket()
+  await bot.api.sendMessage(ALLOWED_USER_ID, '🔴 Bot 已離線').catch(() => {})
+  process.exit(0)
+})
+
+async function notifyAndExit(reason: string): Promise<never> {
+  cleanupSocket()
+  await bot.api.sendMessage(ALLOWED_USER_ID, `🔴 Bot 異常斷線：${reason}`).catch(() => {})
+  process.exit(1)
+}
+
+process.on('uncaughtException', (err) => {
+  log(`[bot] uncaughtException: ${err.message}`)
+  notifyAndExit(err.message)
+})
+
+process.on('unhandledRejection', (reason) => {
+  const msg = reason instanceof Error ? reason.message : String(reason)
+  log(`[bot] unhandledRejection: ${msg}`)
+  notifyAndExit(msg)
+})
+
+// 啟動時預先建立 tmux session，讓 CLI 可以直接 attach
+startSession.execute().then(result => {
+  ensureLogger()
+  log(`[bot] pre-warmed session: ${result}`)
+}).catch(err => {
+  log(`[bot] pre-warm failed: ${err.message}`)
 })
 
 bot.api.sendMessage(ALLOWED_USER_ID, '⏳ Bot 啟動中，請稍候...').catch(() => {})
@@ -91,6 +193,6 @@ bot.start({
     log(`[bot] polling started: @${info.username}`)
     await bot.api.sendMessage(ALLOWED_USER_ID, '✅ Bot 已上線，可以開始對話')
   },
-}).catch(err => log(`[bot] fatal: ${err.message}`))
+}).catch(err => notifyAndExit(err.message))
 log('🤖 Marsen.AI.Reach 啟動中...')
 log(`📁 工作目錄：${WORK_DIR}`)

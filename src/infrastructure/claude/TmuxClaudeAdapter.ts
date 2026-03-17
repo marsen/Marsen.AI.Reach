@@ -30,10 +30,17 @@ function isClaudeRunning(): boolean {
   }
 }
 
+let botPid = process.pid
+
+export function setBotPid(pid: number): void {
+  botPid = pid
+}
+
 async function createSession(): Promise<void> {
   console.log('[claude] starting new tmux session...')
   tmux(`new-session -d -s ${SESSION} -x 220 -y 50`)
-  tmux(`send-keys -t ${SESSION} "cd ${WORK_DIR} && ${CLAUDE_BIN} --dangerously-skip-permissions" Enter`)
+  const cmd = `cd ${WORK_DIR} && ${CLAUDE_BIN} --dangerously-skip-permissions; kill -USR1 ${botPid} 2>/dev/null; tmux kill-session -t ${SESSION}`
+  tmux(`send-keys -t ${SESSION} "${cmd}" Enter`)
   await waitForStablePrompt(60000)
   console.log('[claude] session ready')
 }
@@ -73,7 +80,15 @@ async function waitForStablePrompt(timeout = 120000): Promise<void> {
   throw new Error('等待 Claude 回應逾時')
 }
 
+let ensuringPromise: Promise<'new' | 'resumed'> | null = null
+
 async function ensureSession(): Promise<'new' | 'resumed'> {
+  if (ensuringPromise) return ensuringPromise
+  ensuringPromise = _ensureSession().finally(() => { ensuringPromise = null })
+  return ensuringPromise
+}
+
+async function _ensureSession(): Promise<'new' | 'resumed'> {
   if (sessionExists() && isClaudeRunning()) return 'resumed'
   if (sessionExists()) tmux(`kill-session -t ${SESSION}`)
   await createSession()

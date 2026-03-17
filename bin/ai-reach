@@ -1,0 +1,131 @@
+#!/bin/bash
+
+# Resolve symlinks to find package directory
+SOURCE="$0"
+while [ -h "$SOURCE" ]; do
+  DIR="$(cd -P "$(dirname "$SOURCE")" && pwd)"
+  SOURCE="$(readlink "$SOURCE")"
+  [[ "$SOURCE" != /* ]] && SOURCE="$DIR/$SOURCE"
+done
+PACKAGE_DIR="$(cd -P "$(dirname "$SOURCE")/.." && pwd)"
+
+CONFIG_DIR="$HOME/.ai-reach"
+ENV_FILE="$CONFIG_DIR/.env"
+TMUX_SESSION="claude-reach"
+TSX="$PACKAGE_DIR/node_modules/.bin/tsx"
+CLIENT="$PACKAGE_DIR/bin/client.mjs"
+
+# Handle subcommands
+if [ "$1" = "init" ]; then
+  exec node "$PACKAGE_DIR/bin/init.mjs"
+fi
+
+# 已經在 claude-reach session 裡
+if [ -n "$TMUX" ]; then
+  CURRENT_SESSION="$(tmux display-message -p '#S' 2>/dev/null)"
+  if [ "$CURRENT_SESSION" = "$TMUX_SESSION" ]; then
+    echo "✅ 你已經在 $TMUX_SESSION session 中了"
+    exit 0
+  fi
+fi
+
+# Check config
+if [ ! -f "$ENV_FILE" ]; then
+  echo "❌ 尚未設定，請先執行："
+  echo "   ai-reach init"
+  exit 1
+fi
+
+# Check if bot is running via socket
+BOT_STATUS=$(node "$CLIENT" status 2>/dev/null)
+BOT_RUNNING=$?
+
+if [ $BOT_RUNNING -eq 0 ]; then
+  # Bot is running, check session state via socket
+  if [ "$BOT_STATUS" = "active" ]; then
+    SESSION_STATUS="進行中"
+    HAS_SESSION=true
+  else
+    SESSION_STATUS="無"
+    HAS_SESSION=false
+  fi
+
+  echo "⚠️  Bot 已在執行中"
+  echo "    Claude session：$SESSION_STATUS"
+  echo ""
+  if [ "$HAS_SESSION" = "true" ]; then
+    echo "  [1] 進入現有 session"
+    echo "  [2] 停止舊的，用當前目錄重啟"
+    echo "  [3] 取消"
+    echo ""
+    printf "請選擇 [1-3]: "
+    read choice
+  else
+    echo "  [1] 啟動新 session"
+    echo "  [2] 取消"
+    echo ""
+    printf "請選擇 [1-2]: "
+    read choice
+    [ "$choice" = "2" ] && choice="3"
+  fi
+
+  case "$choice" in
+    1)
+      if [ "$HAS_SESSION" = "false" ]; then
+        echo "⏳ 等待 Claude session 就緒..."
+        RESULT=$(node "$CLIENT" start 2>/dev/null)
+        if [ $? -ne 0 ]; then
+          echo "❌ 無法啟動 session"
+          exit 1
+        fi
+        echo "✅ $RESULT"
+      fi
+      if [ -n "$TMUX" ]; then
+        tmux switch-client -t "$TMUX_SESSION"
+        exit 0
+      else
+        exec tmux attach -t "$TMUX_SESSION"
+      fi
+      ;;
+    2)
+      # Stop bot and tmux session, then fall through to start new bot
+      BOT_PID=$(pgrep -f "tsx.*bot.ts" 2>/dev/null | head -1)
+      if [ -n "$BOT_PID" ]; then
+        kill "$BOT_PID"
+        sleep 2
+      fi
+      tmux kill-session -t "$TMUX_SESSION" 2>/dev/null
+      ;;
+    3)
+      exit 0
+      ;;
+    *)
+      echo "無效選項"
+      exit 1
+      ;;
+  esac
+fi
+
+# Start bot
+mkdir -p "$CONFIG_DIR"
+WORK_DIR="$(pwd)" "$TSX" "$PACKAGE_DIR/src/presentation/bot.ts" >> "$CONFIG_DIR/bot.log" 2>&1 &
+echo "🚀 Bot 啟動中..."
+
+# Wait for bot socket to appear and session to be ready
+echo "⏳ 等待 Claude session 就緒..."
+for i in $(seq 1 60); do
+  RESULT=$(node "$CLIENT" start 2>/dev/null)
+  if [ $? -eq 0 ]; then
+    echo "✅ 連接中..."
+    if [ -n "$TMUX" ]; then
+      tmux switch-client -t "$TMUX_SESSION"
+      exit 0
+    else
+      exec tmux attach -t "$TMUX_SESSION"
+    fi
+  fi
+  sleep 1
+done
+
+echo "❌ Timeout：Claude session 未就緒"
+exit 1
