@@ -27,6 +27,10 @@ const sendMessage = new SendMessageUseCase(claude, session)
 
 let logger: SessionLogger | null = null
 
+function ensureLogger() {
+  if (!logger) logger = new SessionLogger(WORK_DIR)
+}
+
 const bot = new Bot(BOT_TOKEN)
 
 // 白名單
@@ -43,7 +47,7 @@ bot.command('start', async (ctx) => {
   log(`[bot] /start from ${ctx.from?.id}`)
   await ctx.reply('⏳ 啟動中...')
   const result = await startSession.execute()
-  logger = new SessionLogger(WORK_DIR)
+  ensureLogger()
   console.log('[bot] session result:', result)
   if (result === 'resumed') {
     await ctx.reply(`🔄 接續對話\n📁 ${WORK_DIR}`)
@@ -121,6 +125,7 @@ const socketServer = createServer((socket) => {
         socket.end()
       } else if (cmd === 'start') {
         startSession.execute().then(result => {
+          ensureLogger()
           socket.write(`ready:${result}\n`)
           socket.end()
           log(`[bot] socket start: ${result}`)
@@ -176,6 +181,7 @@ process.on('unhandledRejection', (reason) => {
 
 // 啟動時預先建立 tmux session，讓 CLI 可以直接 attach
 startSession.execute().then(result => {
+  ensureLogger()
   log(`[bot] pre-warmed session: ${result}`)
 }).catch(err => {
   log(`[bot] pre-warm failed: ${err.message}`)

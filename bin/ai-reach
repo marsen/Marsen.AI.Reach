@@ -41,8 +41,8 @@ BOT_STATUS=$(node "$CLIENT" status 2>/dev/null)
 BOT_RUNNING=$?
 
 if [ $BOT_RUNNING -eq 0 ]; then
-  # Bot is running, check tmux session
-  if tmux has-session -t "$TMUX_SESSION" 2>/dev/null; then
+  # Bot is running, check session state via socket
+  if [ "$BOT_STATUS" = "active" ]; then
     SESSION_STATUS="進行中"
     HAS_SESSION=true
   else
