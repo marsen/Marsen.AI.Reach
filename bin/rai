@@ -82,7 +82,7 @@ BOT_RUNNING=$?
 
 if [ $BOT_RUNNING -ne 0 ]; then
   echo "⏳ Bot 未回應，嘗試啟動服務..."
-  launchctl start "$LAUNCHD_LABEL" 2>/dev/null
+  launchctl load "$PLIST_PATH" 2>/dev/null || launchctl start "$LAUNCHD_LABEL" 2>/dev/null
 fi
 
 if [ $BOT_RUNNING -eq 0 ]; then
