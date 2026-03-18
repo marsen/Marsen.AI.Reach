@@ -9,11 +9,11 @@ while [ -h "$SOURCE" ]; do
 done
 PACKAGE_DIR="$(cd -P "$(dirname "$SOURCE")/.." && pwd)"
 
-CONFIG_DIR="$HOME/.ai-reach"
+CONFIG_DIR="$HOME/.rai"
 ENV_FILE="$CONFIG_DIR/.env"
 TMUX_SESSION="claude-reach"
 CLIENT="$PACKAGE_DIR/bin/client.mjs"
-LAUNCHD_LABEL="com.marsen.ai-reach"
+LAUNCHD_LABEL="com.marsen.rai"
 PLIST_PATH="$HOME/Library/LaunchAgents/${LAUNCHD_LABEL}.plist"
 
 # 解析子命令與旗標

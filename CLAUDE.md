@@ -17,9 +17,9 @@ Tech: Node.js + TypeScript (ESM) + grammY
 - [x] CA 分層重構（domain / application / infrastructure / presentation）
 - [x] Bug：ensureSession() 只檢查 tmux session 存在，未確認 claude process 仍在運行
 - [x] Unix socket 取代 PID file（IPC）
-- [x] SessionLogger（~/.ai-reach/logs/{project}/）
-- [x] ai-reach CLI 工具（多專案、單實例防呆）
-- [x] US1-0：npm install -g github:marsen/marsen-ai-reach 安裝測試
+- [x] SessionLogger（~/.rai/logs/{project}/）
+- [x] rai CLI 工具（多專案、單實例防呆）
+- [x] US1-0：npm install -g github:marsen/marsen-rai 安裝測試
 - [x] WORK_DIR 重構：移除 .env，改由執行時透過 socket 傳入
 - [x] CLI 改名為 rai，支援 -p 旗標、stop/status 子命令
 - [x] launchd 常駐服務：rai init 自動安裝，開機自動啟動

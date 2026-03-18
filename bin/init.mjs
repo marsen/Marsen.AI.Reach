@@ -8,7 +8,7 @@ import { fileURLToPath } from 'url'
 
 const PACKAGE_DIR = join(dirname(fileURLToPath(import.meta.url)), '..')
 
-const CONFIG_DIR = join(homedir(), '.ai-reach')
+const CONFIG_DIR = join(homedir(), '.rai')
 const ENV_FILE = join(CONFIG_DIR, '.env')
 
 const rl = createInterface({ input: process.stdin, output: process.stdout })
@@ -26,7 +26,7 @@ if (existsSync(ENV_FILE)) {
   }
 }
 
-console.log('🤖 ai-reach 設定精靈\n')
+console.log('🤖 rai 設定精靈\n')
 
 const botToken = await ask(
   `BOT_TOKEN${existing.BOT_TOKEN ? ` [現有: ${existing.BOT_TOKEN.slice(0, 10)}...]` : ''}: `
@@ -55,7 +55,7 @@ writeFileSync(
 console.log(`\n✅ 設定完成，存至 ${ENV_FILE}`)
 
 // Install launchd service
-const LAUNCHD_LABEL = 'com.marsen.ai-reach'
+const LAUNCHD_LABEL = 'com.marsen.rai'
 const PLIST_DIR = join(homedir(), 'Library', 'LaunchAgents')
 const PLIST_PATH = join(PLIST_DIR, `${LAUNCHD_LABEL}.plist`)
 const TSX = join(PACKAGE_DIR, 'node_modules', '.bin', 'tsx')

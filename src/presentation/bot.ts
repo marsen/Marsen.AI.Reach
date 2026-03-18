@@ -104,7 +104,7 @@ bot.catch(async (err) => {
 })
 
 // Unix socket server
-const SOCKET_PATH = join(homedir(), '.ai-reach', 'bot.sock')
+const SOCKET_PATH = join(homedir(), '.rai', 'bot.sock')
 
 function cleanupSocket() {
   try { unlinkSync(SOCKET_PATH) } catch {}

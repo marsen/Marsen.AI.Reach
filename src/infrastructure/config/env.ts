@@ -2,7 +2,7 @@ import { config } from 'dotenv'
 import { join } from 'path'
 import { homedir } from 'os'
 
-config({ path: join(homedir(), '.ai-reach', '.env') })
+config({ path: join(homedir(), '.rai', '.env') })
 
 export const BOT_TOKEN = process.env.BOT_TOKEN!
 export const ALLOWED_USER_ID = Number(process.env.ALLOWED_USER_ID!)
