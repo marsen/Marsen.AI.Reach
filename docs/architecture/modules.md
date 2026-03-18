@@ -4,9 +4,9 @@
 
 ```
 bin/
-├── ai-reach          # CLI 入口（bash），偵測 bot 狀態、啟動、attach tmux
-├── client.mjs        # Unix socket client，供 ai-reach 查詢 bot 狀態
-└── init.mjs          # 互動式初始化精靈，寫入 ~/.ai-reach/.env
+├── rai               # CLI 入口（bash），子命令 init/stop/status，attach tmux
+├── client.mjs        # Unix socket client，供 rai 查詢 bot 狀態、傳入 workDir
+└── init.mjs          # 互動式初始化精靈，寫入 ~/.ai-reach/.env 並安裝 launchd 服務
 src/
 ├── domain/
 │   ├── entities/Session.ts       # Session 狀態 entity
@@ -27,22 +27,22 @@ src/
 | 模組 | 職責 |
 |------|------|
 | `domain/entities/Session.ts` | 追蹤 session 活躍狀態（isActive / start / stop） |
-| `domain/ports/ClaudePort.ts` | 定義 `run()` / `ensure()` / `reset()` 介面 |
+| `domain/ports/ClaudePort.ts` | 定義 `run()` / `ensure(workDir)` / `reset(workDir)` 介面 |
 | `application/use-cases/` | 協調 domain 與 port，回傳業務結果 |
 | `infrastructure/claude/TmuxClaudeAdapter.ts` | 透過 tmux 控制 Claude CLI，管理 session 存活與訊息傳遞 |
-| `infrastructure/config/env.ts` | 從 `.env` 讀取 BOT_TOKEN / ALLOWED_USER_ID / WORK_DIR / CLAUDE_BIN |
-| `presentation/bot.ts` | grammY bot（Telegram）、白名單 middleware、指令處理、啟動/離線通知、Unix socket server（`~/.ai-reach/bot.sock`）。連線方式為 Long Polling（本機無公開 HTTPS，無法用 Webhook）。換平台只需替換此層。 |
-| `bin/client.mjs` | Unix socket client，`status` 查詢 bot 是否在跑，`start` 觸發 Claude session 啟動並等待就緒，供 `bin/ai-reach` shell script 使用 |
+| `infrastructure/config/env.ts` | 從 `.env` 讀取 BOT_TOKEN / ALLOWED_USER_ID / CLAUDE_BIN |
+| `presentation/bot.ts` | grammY bot（Telegram）、白名單 middleware、指令處理、啟動/離線通知、Unix socket server（`~/.ai-reach/bot.sock`）。連線方式為 Long Polling。換平台只需替換此層。 |
+| `bin/client.mjs` | Unix socket client，`status`/`info` 查詢狀態，`start <workDir>` 觸發 Claude session 啟動，供 `bin/rai` 使用 |
 
 ## 主要流程
 
 ```
-Telegram User
+手機 Telegram
      │
      ▼
 bot.ts (Long Polling)
      │  白名單過濾
-     ├── /start  → StartSessionUseCase → TmuxClaudeAdapter.ensure()
+     ├── /start  → StartSessionUseCase → TmuxClaudeAdapter.ensure(workDir)
      ├── /stop   → StopSessionUseCase
      ├── /status → Session.isActive()
      └── text    → SendMessageUseCase → TmuxClaudeAdapter.run()
@@ -50,6 +50,14 @@ bot.ts (Long Polling)
                                     tmux session "claude-reach"
                                                │
                                           Claude CLI
+
+rai CLI（使用者終端機）
+     │  Unix socket
+     ├── rai init    → 設定 .env + 安裝 launchd 服務
+     ├── rai         → socket start:<workDir> → attach tmux
+     ├── rai -p path → 同上，指定目錄
+     ├── rai status  → socket info → 顯示狀態與目錄
+     └── rai stop    → launchctl unload
 ```
 
 ## 安全注意事項

@@ -12,12 +12,45 @@ PACKAGE_DIR="$(cd -P "$(dirname "$SOURCE")/.." && pwd)"
 CONFIG_DIR="$HOME/.ai-reach"
 ENV_FILE="$CONFIG_DIR/.env"
 TMUX_SESSION="claude-reach"
-TSX="$PACKAGE_DIR/node_modules/.bin/tsx"
 CLIENT="$PACKAGE_DIR/bin/client.mjs"
+LAUNCHD_LABEL="com.marsen.ai-reach"
+PLIST_PATH="$HOME/Library/LaunchAgents/${LAUNCHD_LABEL}.plist"
 
-# Handle subcommands
-if [ "$1" = "init" ]; then
+# 解析子命令與旗標
+SUBCOMMAND=""
+WORK_DIR=""
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    init|stop|status) SUBCOMMAND="$1"; shift ;;
+    -p|--path) WORK_DIR="$2"; shift 2 ;;
+    *) WORK_DIR="$1"; shift ;;
+  esac
+done
+WORK_DIR="${WORK_DIR:-$(pwd)}"
+
+# 處理子命令
+if [ "$SUBCOMMAND" = "init" ]; then
   exec node "$PACKAGE_DIR/bin/init.mjs"
+fi
+
+if [ "$SUBCOMMAND" = "stop" ]; then
+  echo "🛑 停止服務..."
+  launchctl unload "$PLIST_PATH" 2>/dev/null && echo "✅ 服務已停止" || echo "❌ 停止失敗（服務可能未安裝）"
+  exit 0
+fi
+
+if [ "$SUBCOMMAND" = "status" ]; then
+  INFO=$(node "$CLIENT" info 2>/dev/null)
+  if [ $? -ne 0 ]; then
+    echo "💤 Bot 未運行"
+  else
+    SESSION=$(echo "$INFO" | node -e "process.stdin.resume();let d='';process.stdin.on('data',c=>d+=c);process.stdin.on('end',()=>{const o=JSON.parse(d);console.log(o.session)})")
+    WORK=$(echo "$INFO" | node -e "process.stdin.resume();let d='';process.stdin.on('data',c=>d+=c);process.stdin.on('end',()=>{const o=JSON.parse(d);console.log(o.workDir)})")
+    echo "✅ Bot 運行中"
+    echo "   Claude session：${SESSION}"
+    echo "   目前目錄：${WORK}"
+  fi
+  exit 0
 fi
 
 # 已經在 claude-reach session 裡
@@ -32,7 +65,14 @@ fi
 # Check config
 if [ ! -f "$ENV_FILE" ]; then
   echo "❌ 尚未設定，請先執行："
-  echo "   ai-reach init"
+  echo "   rai init"
+  exit 1
+fi
+
+# Check launchd service installed
+if [ ! -f "$PLIST_PATH" ]; then
+  echo "❌ 尚未安裝服務，請先執行："
+  echo "   rai init"
   exit 1
 fi
 
@@ -40,8 +80,15 @@ fi
 BOT_STATUS=$(node "$CLIENT" status 2>/dev/null)
 BOT_RUNNING=$?
 
+if [ $BOT_RUNNING -ne 0 ]; then
+  echo "⏳ Bot 未回應，嘗試啟動服務..."
+  launchctl load "$PLIST_PATH" 2>/dev/null || launchctl start "$LAUNCHD_LABEL" 2>/dev/null
+fi
+
 if [ $BOT_RUNNING -eq 0 ]; then
-  # Bot is running, check session state via socket
+  INFO=$(node "$CLIENT" info 2>/dev/null)
+  CURRENT_WORK=$(echo "$INFO" | node -e "process.stdin.resume();let d='';process.stdin.on('data',c=>d+=c);process.stdin.on('end',()=>{try{const o=JSON.parse(d);console.log(o.workDir)}catch{}})" 2>/dev/null)
+
   if [ "$BOT_STATUS" = "active" ]; then
     SESSION_STATUS="進行中"
     HAS_SESSION=true
@@ -52,10 +99,12 @@ if [ $BOT_RUNNING -eq 0 ]; then
 
   echo "⚠️  Bot 已在執行中"
   echo "    Claude session：$SESSION_STATUS"
+  [ -n "$CURRENT_WORK" ] && echo "    目前目錄：$CURRENT_WORK"
+  [ "$CURRENT_WORK" != "$WORK_DIR" ] && echo "    新目錄：  $WORK_DIR"
   echo ""
   if [ "$HAS_SESSION" = "true" ]; then
-    echo "  [1] 進入現有 session"
-    echo "  [2] 停止舊的，用當前目錄重啟"
+    echo "  [1] 進入現有 session（$CURRENT_WORK）"
+    echo "  [2] 切換到新目錄重啟（$WORK_DIR）"
     echo "  [3] 取消"
     echo ""
     printf "請選擇 [1-3]: "
@@ -73,7 +122,7 @@ if [ $BOT_RUNNING -eq 0 ]; then
     1)
       if [ "$HAS_SESSION" = "false" ]; then
         echo "⏳ 等待 Claude session 就緒..."
-        RESULT=$(node "$CLIENT" start 2>/dev/null)
+        RESULT=$(node "$CLIENT" start "$WORK_DIR" 2>/dev/null)
         if [ $? -ne 0 ]; then
           echo "❌ 無法啟動 session"
           exit 1
@@ -88,13 +137,10 @@ if [ $BOT_RUNNING -eq 0 ]; then
       fi
       ;;
     2)
-      # Stop bot and tmux session, then fall through to start new bot
-      BOT_PID=$(pgrep -f "tsx.*bot.ts" 2>/dev/null | head -1)
-      if [ -n "$BOT_PID" ]; then
-        kill "$BOT_PID"
-        sleep 2
-      fi
       tmux kill-session -t "$TMUX_SESSION" 2>/dev/null
+      launchctl stop "$LAUNCHD_LABEL" 2>/dev/null
+      sleep 2
+      launchctl start "$LAUNCHD_LABEL" 2>/dev/null
       ;;
     3)
       exit 0
@@ -106,15 +152,10 @@ if [ $BOT_RUNNING -eq 0 ]; then
   esac
 fi
 
-# Start bot
-mkdir -p "$CONFIG_DIR"
-WORK_DIR="$(pwd)" "$TSX" "$PACKAGE_DIR/src/presentation/bot.ts" >> "$CONFIG_DIR/bot.log" 2>&1 &
 echo "🚀 Bot 啟動中..."
-
-# Wait for bot socket to appear and session to be ready
 echo "⏳ 等待 Claude session 就緒..."
 for i in $(seq 1 60); do
-  RESULT=$(node "$CLIENT" start 2>/dev/null)
+  RESULT=$(node "$CLIENT" start "$WORK_DIR" 2>/dev/null)
   if [ $? -eq 0 ]; then
     echo "✅ 連接中..."
     if [ -n "$TMUX" ]; then

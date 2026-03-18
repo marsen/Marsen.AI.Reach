@@ -22,7 +22,7 @@ describe('StartSessionUseCase', () => {
     vi.mocked(claude.ensure).mockResolvedValue('new')
     const uc = new StartSessionUseCase(claude, session)
 
-    const result = await uc.execute()
+    const result = await uc.execute('/tmp/test')
 
     expect(result).toBe('new')
     expect(session.isActive()).toBe(true)
@@ -32,7 +32,7 @@ describe('StartSessionUseCase', () => {
     vi.mocked(claude.ensure).mockResolvedValue('resumed')
     const uc = new StartSessionUseCase(claude, session)
 
-    const result = await uc.execute()
+    const result = await uc.execute('/tmp/test')
 
     expect(result).toBe('resumed')
     expect(session.isActive()).toBe(true)

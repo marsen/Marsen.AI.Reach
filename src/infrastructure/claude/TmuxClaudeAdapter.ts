@@ -1,7 +1,7 @@
 import { execSync } from 'child_process'
 import { writeFileSync } from 'fs'
 import { ClaudePort } from '../../domain/ports/ClaudePort.js'
-import { WORK_DIR, CLAUDE_BIN } from '../config/env.js'
+import { CLAUDE_BIN } from '../config/env.js'
 
 const SESSION = 'claude-reach'
 const PROMPT_RE = /❯\s*\r?\n[-─]+/
@@ -31,15 +31,16 @@ function isClaudeRunning(): boolean {
 }
 
 let botPid = process.pid
+let lastWorkDir = process.cwd()
 
 export function setBotPid(pid: number): void {
   botPid = pid
 }
 
-async function createSession(): Promise<void> {
+async function createSession(workDir: string): Promise<void> {
   console.log('[claude] starting new tmux session...')
   tmux(`new-session -d -s ${SESSION} -x 220 -y 50`)
-  const cmd = `cd ${WORK_DIR} && ${CLAUDE_BIN} --dangerously-skip-permissions; kill -USR1 ${botPid} 2>/dev/null; tmux kill-session -t ${SESSION}`
+  const cmd = `cd ${workDir} && ${CLAUDE_BIN} --dangerously-skip-permissions; kill -USR1 ${botPid} 2>/dev/null; tmux kill-session -t ${SESSION}`
   tmux(`send-keys -t ${SESSION} "${cmd}" Enter`)
   await waitForStablePrompt(60000)
   console.log('[claude] session ready')
@@ -82,16 +83,17 @@ async function waitForStablePrompt(timeout = 120000): Promise<void> {
 
 let ensuringPromise: Promise<'new' | 'resumed'> | null = null
 
-async function ensureSession(): Promise<'new' | 'resumed'> {
+async function ensureSession(workDir: string): Promise<'new' | 'resumed'> {
+  lastWorkDir = workDir
   if (ensuringPromise) return ensuringPromise
-  ensuringPromise = _ensureSession().finally(() => { ensuringPromise = null })
+  ensuringPromise = _ensureSession(workDir).finally(() => { ensuringPromise = null })
   return ensuringPromise
 }
 
-async function _ensureSession(): Promise<'new' | 'resumed'> {
+async function _ensureSession(workDir: string): Promise<'new' | 'resumed'> {
   if (sessionExists() && isClaudeRunning()) return 'resumed'
   if (sessionExists()) tmux(`kill-session -t ${SESSION}`)
-  await createSession()
+  await createSession(workDir)
   return 'new'
 }
 
@@ -119,18 +121,18 @@ export class TmuxClaudeAdapter implements ClaudePort {
     return runClaude(message)
   }
 
-  async ensure(): Promise<'new' | 'resumed'> {
-    return ensureSession()
+  async ensure(workDir: string): Promise<'new' | 'resumed'> {
+    return ensureSession(workDir)
   }
 
-  async reset(): Promise<void> {
+  async reset(workDir: string): Promise<void> {
     if (sessionExists()) tmux(`kill-session -t ${SESSION}`)
-    await createSession()
+    await createSession(workDir)
   }
 }
 
 async function runClaude(message: string): Promise<string> {
-  await ensureSession()
+  await ensureSession(lastWorkDir)
 
   // 用 tmux buffer 傳訊息，避免特殊字元問題
   const tmpFile = '/tmp/claude-reach-msg.txt'
