@@ -99,7 +99,7 @@ if [ $BOT_RUNNING -eq 0 ]; then
 
   echo "⚠️  Bot 已在執行中"
   echo "    Claude session：$SESSION_STATUS"
-  [ -n "$CURRENT_WORK" ] && echo "    目前目錄：$CURRENT_WORK"
+  echo "    目前目錄：${CURRENT_WORK:-（空）}"
   [ "$CURRENT_WORK" != "$WORK_DIR" ] && echo "    新目錄：  $WORK_DIR"
   echo ""
   if [ "$HAS_SESSION" = "true" ]; then
