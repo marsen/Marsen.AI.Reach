@@ -5,7 +5,7 @@
 ## 安裝
 
 ```bash
-npm install -g github:marsen/marsen-rai
+npm install -g github:marsen/Marsen.AI.Reach
 rai init
 ```
 
