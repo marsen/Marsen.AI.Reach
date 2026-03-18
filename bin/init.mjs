@@ -1,8 +1,12 @@
 #!/usr/bin/env node
 import { createInterface } from 'readline'
 import { writeFileSync, mkdirSync, existsSync, readFileSync } from 'fs'
-import { join } from 'path'
+import { execSync } from 'child_process'
+import { join, dirname } from 'path'
 import { homedir } from 'os'
+import { fileURLToPath } from 'url'
+
+const PACKAGE_DIR = join(dirname(fileURLToPath(import.meta.url)), '..')
 
 const CONFIG_DIR = join(homedir(), '.ai-reach')
 const ENV_FILE = join(CONFIG_DIR, '.env')
@@ -49,3 +53,50 @@ writeFileSync(
 )
 
 console.log(`\n✅ 設定完成，存至 ${ENV_FILE}`)
+
+// Install launchd service
+const LAUNCHD_LABEL = 'com.marsen.ai-reach'
+const PLIST_DIR = join(homedir(), 'Library', 'LaunchAgents')
+const PLIST_PATH = join(PLIST_DIR, `${LAUNCHD_LABEL}.plist`)
+const TSX = join(PACKAGE_DIR, 'node_modules', '.bin', 'tsx')
+const BOT_TS = join(PACKAGE_DIR, 'src', 'presentation', 'bot.ts')
+const LOG_PATH = join(CONFIG_DIR, 'bot.log')
+
+const plist = `<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>${LAUNCHD_LABEL}</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>${TSX}</string>
+    <string>${BOT_TS}</string>
+  </array>
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>HOME</key>
+    <string>${homedir()}</string>
+  </dict>
+  <key>StandardOutPath</key>
+  <string>${LOG_PATH}</string>
+  <key>StandardErrorPath</key>
+  <string>${LOG_PATH}</string>
+  <key>RunAtLoad</key>
+  <true/>
+  <key>KeepAlive</key>
+  <true/>
+</dict>
+</plist>
+`
+
+mkdirSync(PLIST_DIR, { recursive: true })
+writeFileSync(PLIST_PATH, plist)
+
+try {
+  execSync(`launchctl unload "${PLIST_PATH}" 2>/dev/null; launchctl load "${PLIST_PATH}"`)
+  console.log(`✅ 服務已安裝，開機自動啟動（${LAUNCHD_LABEL}）`)
+} catch {
+  console.log(`⚠️  服務安裝完成，但啟動失敗，請手動執行：`)
+  console.log(`   launchctl load "${PLIST_PATH}"`)
+}

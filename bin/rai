@@ -12,14 +12,20 @@ PACKAGE_DIR="$(cd -P "$(dirname "$SOURCE")/.." && pwd)"
 CONFIG_DIR="$HOME/.ai-reach"
 ENV_FILE="$CONFIG_DIR/.env"
 TMUX_SESSION="claude-reach"
-TSX="$PACKAGE_DIR/node_modules/.bin/tsx"
 CLIENT="$PACKAGE_DIR/bin/client.mjs"
-WORK_DIR="${1:-$(pwd)}"
+LAUNCHD_LABEL="com.marsen.ai-reach"
+PLIST_PATH="$HOME/Library/LaunchAgents/${LAUNCHD_LABEL}.plist"
 
-# Handle subcommands
-if [ "$1" = "init" ]; then
-  exec node "$PACKAGE_DIR/bin/init.mjs"
-fi
+# -p flag 或第一個非旗標參數作為 WORK_DIR
+WORK_DIR=""
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    init) exec node "$PACKAGE_DIR/bin/init.mjs" ;;
+    -p|--path) WORK_DIR="$2"; shift 2 ;;
+    *) WORK_DIR="$1"; shift ;;
+  esac
+done
+WORK_DIR="${WORK_DIR:-$(pwd)}"
 
 # 已經在 claude-reach session 裡
 if [ -n "$TMUX" ]; then
@@ -33,7 +39,14 @@ fi
 # Check config
 if [ ! -f "$ENV_FILE" ]; then
   echo "❌ 尚未設定，請先執行："
-  echo "   ai-reach init"
+  echo "   rai init"
+  exit 1
+fi
+
+# Check launchd service installed
+if [ ! -f "$PLIST_PATH" ]; then
+  echo "❌ 尚未安裝服務，請先執行："
+  echo "   rai init"
   exit 1
 fi
 
@@ -41,8 +54,12 @@ fi
 BOT_STATUS=$(node "$CLIENT" status 2>/dev/null)
 BOT_RUNNING=$?
 
+if [ $BOT_RUNNING -ne 0 ]; then
+  echo "⏳ Bot 未回應，嘗試啟動服務..."
+  launchctl start "$LAUNCHD_LABEL" 2>/dev/null
+fi
+
 if [ $BOT_RUNNING -eq 0 ]; then
-  # Bot is running, check session state via socket
   if [ "$BOT_STATUS" = "active" ]; then
     SESSION_STATUS="進行中"
     HAS_SESSION=true
@@ -89,13 +106,10 @@ if [ $BOT_RUNNING -eq 0 ]; then
       fi
       ;;
     2)
-      # Stop bot and tmux session, then fall through to start new bot
-      BOT_PID=$(pgrep -f "tsx.*bot.ts" 2>/dev/null | head -1)
-      if [ -n "$BOT_PID" ]; then
-        kill "$BOT_PID"
-        sleep 2
-      fi
       tmux kill-session -t "$TMUX_SESSION" 2>/dev/null
+      launchctl stop "$LAUNCHD_LABEL" 2>/dev/null
+      sleep 2
+      launchctl start "$LAUNCHD_LABEL" 2>/dev/null
       ;;
     3)
       exit 0
@@ -107,12 +121,7 @@ if [ $BOT_RUNNING -eq 0 ]; then
   esac
 fi
 
-# Start bot
-mkdir -p "$CONFIG_DIR"
-WORK_DIR="$(pwd)" "$TSX" "$PACKAGE_DIR/src/presentation/bot.ts" >> "$CONFIG_DIR/bot.log" 2>&1 &
 echo "🚀 Bot 啟動中..."
-
-# Wait for bot socket to appear and session to be ready
 echo "⏳ 等待 Claude session 就緒..."
 for i in $(seq 1 60); do
   RESULT=$(node "$CLIENT" start "$WORK_DIR" 2>/dev/null)
