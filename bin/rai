@@ -16,16 +16,42 @@ CLIENT="$PACKAGE_DIR/bin/client.mjs"
 LAUNCHD_LABEL="com.marsen.ai-reach"
 PLIST_PATH="$HOME/Library/LaunchAgents/${LAUNCHD_LABEL}.plist"
 
-# -p flag 或第一個非旗標參數作為 WORK_DIR
+# 解析子命令與旗標
+SUBCOMMAND=""
 WORK_DIR=""
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    init) exec node "$PACKAGE_DIR/bin/init.mjs" ;;
+    init|stop|status) SUBCOMMAND="$1"; shift ;;
     -p|--path) WORK_DIR="$2"; shift 2 ;;
     *) WORK_DIR="$1"; shift ;;
   esac
 done
 WORK_DIR="${WORK_DIR:-$(pwd)}"
+
+# 處理子命令
+if [ "$SUBCOMMAND" = "init" ]; then
+  exec node "$PACKAGE_DIR/bin/init.mjs"
+fi
+
+if [ "$SUBCOMMAND" = "stop" ]; then
+  echo "🛑 停止服務..."
+  launchctl unload "$PLIST_PATH" 2>/dev/null && echo "✅ 服務已停止" || echo "❌ 停止失敗（服務可能未安裝）"
+  exit 0
+fi
+
+if [ "$SUBCOMMAND" = "status" ]; then
+  INFO=$(node "$CLIENT" info 2>/dev/null)
+  if [ $? -ne 0 ]; then
+    echo "💤 Bot 未運行"
+  else
+    SESSION=$(echo "$INFO" | node -e "process.stdin.resume();let d='';process.stdin.on('data',c=>d+=c);process.stdin.on('end',()=>{const o=JSON.parse(d);console.log(o.session)})")
+    WORK=$(echo "$INFO" | node -e "process.stdin.resume();let d='';process.stdin.on('data',c=>d+=c);process.stdin.on('end',()=>{const o=JSON.parse(d);console.log(o.workDir)})")
+    echo "✅ Bot 運行中"
+    echo "   Claude session：${SESSION}"
+    echo "   目前目錄：${WORK}"
+  fi
+  exit 0
+fi
 
 # 已經在 claude-reach session 裡
 if [ -n "$TMUX" ]; then
@@ -60,6 +86,9 @@ if [ $BOT_RUNNING -ne 0 ]; then
 fi
 
 if [ $BOT_RUNNING -eq 0 ]; then
+  INFO=$(node "$CLIENT" info 2>/dev/null)
+  CURRENT_WORK=$(echo "$INFO" | node -e "process.stdin.resume();let d='';process.stdin.on('data',c=>d+=c);process.stdin.on('end',()=>{try{const o=JSON.parse(d);console.log(o.workDir)}catch{}})" 2>/dev/null)
+
   if [ "$BOT_STATUS" = "active" ]; then
     SESSION_STATUS="進行中"
     HAS_SESSION=true
@@ -70,10 +99,12 @@ if [ $BOT_RUNNING -eq 0 ]; then
 
   echo "⚠️  Bot 已在執行中"
   echo "    Claude session：$SESSION_STATUS"
+  [ -n "$CURRENT_WORK" ] && echo "    目前目錄：$CURRENT_WORK"
+  [ "$CURRENT_WORK" != "$WORK_DIR" ] && echo "    新目錄：  $WORK_DIR"
   echo ""
   if [ "$HAS_SESSION" = "true" ]; then
-    echo "  [1] 進入現有 session"
-    echo "  [2] 停止舊的，用當前目錄重啟"
+    echo "  [1] 進入現有 session（$CURRENT_WORK）"
+    echo "  [2] 切換到新目錄重啟（$WORK_DIR）"
     echo "  [3] 取消"
     echo ""
     printf "請選擇 [1-3]: "

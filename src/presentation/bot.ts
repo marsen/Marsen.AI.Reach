@@ -121,7 +121,11 @@ const socketServer = createServer((socket) => {
     for (const line of lines) {
       const cmd = line.trim()
       if (!cmd) continue
-      if (cmd === 'status') {
+      if (cmd === 'info') {
+        const info = JSON.stringify({ session: session.isActive() ? 'active' : 'inactive', workDir: currentWorkDir })
+        socket.write(info + '\n')
+        socket.end()
+      } else if (cmd === 'status') {
         socket.write(session.isActive() ? 'active\n' : 'inactive\n')
         socket.end()
       } else if (cmd.startsWith('start')) {
