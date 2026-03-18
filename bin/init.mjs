@@ -28,11 +28,14 @@ if (existsSync(ENV_FILE)) {
 
 console.log('🤖 rai 設定精靈\n')
 
-const botToken = await ask(
-  `BOT_TOKEN${existing.BOT_TOKEN ? ` [現有: ${existing.BOT_TOKEN.slice(0, 10)}...]` : ''}: `
+const channelSecret = await ask(
+  `LINE_CHANNEL_SECRET${existing.LINE_CHANNEL_SECRET ? ` [現有: ${existing.LINE_CHANNEL_SECRET.slice(0, 6)}...]` : ''}: `
+)
+const channelToken = await ask(
+  `LINE_CHANNEL_ACCESS_TOKEN${existing.LINE_CHANNEL_ACCESS_TOKEN ? ` [現有: ${existing.LINE_CHANNEL_ACCESS_TOKEN.slice(0, 6)}...]` : ''}: `
 )
 const allowedUserId = await ask(
-  `ALLOWED_USER_ID${existing.ALLOWED_USER_ID ? ` [${existing.ALLOWED_USER_ID}]` : ''}: `
+  `ALLOWED_USER_ID (LINE userId)${existing.ALLOWED_USER_ID ? ` [${existing.ALLOWED_USER_ID}]` : ''}: `
 )
 const claudeBin = await ask(
   `CLAUDE_BIN [${existing.CLAUDE_BIN || '/usr/local/bin/claude'}]: `
@@ -41,7 +44,8 @@ const claudeBin = await ask(
 rl.close()
 
 const values = {
-  BOT_TOKEN: botToken.trim() || existing.BOT_TOKEN,
+  LINE_CHANNEL_SECRET: channelSecret.trim() || existing.LINE_CHANNEL_SECRET,
+  LINE_CHANNEL_ACCESS_TOKEN: channelToken.trim() || existing.LINE_CHANNEL_ACCESS_TOKEN,
   ALLOWED_USER_ID: allowedUserId.trim() || existing.ALLOWED_USER_ID,
   CLAUDE_BIN: claudeBin.trim() || existing.CLAUDE_BIN || '/usr/local/bin/claude',
 }
