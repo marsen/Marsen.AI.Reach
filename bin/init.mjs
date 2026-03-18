@@ -61,6 +61,7 @@ const PLIST_PATH = join(PLIST_DIR, `${LAUNCHD_LABEL}.plist`)
 const TSX = join(PACKAGE_DIR, 'node_modules', '.bin', 'tsx')
 const BOT_TS = join(PACKAGE_DIR, 'src', 'presentation', 'bot.ts')
 const LOG_PATH = join(CONFIG_DIR, 'bot.log')
+const NODE_BIN_DIR = dirname(process.execPath)
 
 const plist = `<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -77,6 +78,8 @@ const plist = `<?xml version="1.0" encoding="UTF-8"?>
   <dict>
     <key>HOME</key>
     <string>${homedir()}</string>
+    <key>PATH</key>
+    <string>${NODE_BIN_DIR}:/usr/local/bin:/usr/bin:/bin</string>
   </dict>
   <key>StandardOutPath</key>
   <string>${LOG_PATH}</string>
