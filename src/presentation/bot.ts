@@ -3,7 +3,7 @@ import { join } from 'path'
 import { homedir } from 'os'
 import { createServer } from 'net'
 import { Bot } from 'grammy'
-import { BOT_TOKEN, ALLOWED_USER_ID, WORK_DIR } from '../infrastructure/config/env.js'
+import { BOT_TOKEN, ALLOWED_USER_ID } from '../infrastructure/config/env.js'
 import { Session } from '../domain/entities/Session.js'
 import { TmuxClaudeAdapter, setBotPid } from '../infrastructure/claude/TmuxClaudeAdapter.js'
 import { StartSessionUseCase } from '../application/use-cases/StartSessionUseCase.js'
@@ -26,9 +26,10 @@ const stopSession = new StopSessionUseCase(session)
 const sendMessage = new SendMessageUseCase(claude, session)
 
 let logger: SessionLogger | null = null
+let currentWorkDir = process.cwd()
 
-function ensureLogger() {
-  if (!logger) logger = new SessionLogger(WORK_DIR)
+function ensureLogger(workDir: string) {
+  if (!logger) logger = new SessionLogger(workDir)
 }
 
 const bot = new Bot(BOT_TOKEN)
@@ -46,13 +47,13 @@ bot.use(async (ctx, next) => {
 bot.command('start', async (ctx) => {
   log(`[bot] /start from ${ctx.from?.id}`)
   await ctx.reply('⏳ 啟動中...')
-  const result = await startSession.execute()
-  ensureLogger()
+  const result = await startSession.execute(currentWorkDir)
+  ensureLogger(currentWorkDir)
   console.log('[bot] session result:', result)
   if (result === 'resumed') {
-    await ctx.reply(`🔄 接續對話\n📁 ${WORK_DIR}`)
+    await ctx.reply(`🔄 接續對話\n📁 ${currentWorkDir}`)
   } else {
-    await ctx.reply(`🆕 新對話\n📁 ${WORK_DIR}\n\n傳訊息給 Claude 吧！`)
+    await ctx.reply(`🆕 新對話\n📁 ${currentWorkDir}\n\n傳訊息給 Claude 吧！`)
   }
 })
 
@@ -67,7 +68,7 @@ bot.command('status', async (ctx) => {
 })
 
 bot.command('cleanup', async (ctx) => {
-  const count = SessionLogger.cleanup(WORK_DIR)
+  const count = SessionLogger.cleanup(currentWorkDir)
   await ctx.reply(`🗑️ 已刪除 ${count} 筆 30 天前的 log`)
 })
 
@@ -123,12 +124,14 @@ const socketServer = createServer((socket) => {
       if (cmd === 'status') {
         socket.write(session.isActive() ? 'active\n' : 'inactive\n')
         socket.end()
-      } else if (cmd === 'start') {
-        startSession.execute().then(result => {
-          ensureLogger()
+      } else if (cmd.startsWith('start')) {
+        const workDir = cmd.includes(':') ? cmd.slice(cmd.indexOf(':') + 1) : currentWorkDir
+        currentWorkDir = workDir
+        startSession.execute(workDir).then(result => {
+          ensureLogger(workDir)
           socket.write(`ready:${result}\n`)
           socket.end()
-          log(`[bot] socket start: ${result}`)
+          log(`[bot] socket start: ${result} workDir: ${workDir}`)
         }).catch(err => {
           socket.write(`error:${(err as Error).message}\n`)
           socket.end()
@@ -179,14 +182,6 @@ process.on('unhandledRejection', (reason) => {
   notifyAndExit(msg)
 })
 
-// 啟動時預先建立 tmux session，讓 CLI 可以直接 attach
-startSession.execute().then(result => {
-  ensureLogger()
-  log(`[bot] pre-warmed session: ${result}`)
-}).catch(err => {
-  log(`[bot] pre-warm failed: ${err.message}`)
-})
-
 bot.api.sendMessage(ALLOWED_USER_ID, '⏳ Bot 啟動中，請稍候...').catch(() => {})
 bot.start({
   onStart: async (info) => {
@@ -195,4 +190,3 @@ bot.start({
   },
 }).catch(err => notifyAndExit(err.message))
 log('🤖 Marsen.AI.Reach 啟動中...')
-log(`📁 工作目錄：${WORK_DIR}`)

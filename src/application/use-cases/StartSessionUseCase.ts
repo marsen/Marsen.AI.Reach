@@ -7,8 +7,8 @@ export class StartSessionUseCase {
     private readonly session: Session,
   ) {}
 
-  async execute(): Promise<'new' | 'resumed'> {
-    const result = await this.claude.ensure()
+  async execute(workDir: string): Promise<'new' | 'resumed'> {
+    const result = await this.claude.ensure(workDir)
     this.session.start()
     return result
   }

@@ -14,6 +14,7 @@ ENV_FILE="$CONFIG_DIR/.env"
 TMUX_SESSION="claude-reach"
 TSX="$PACKAGE_DIR/node_modules/.bin/tsx"
 CLIENT="$PACKAGE_DIR/bin/client.mjs"
+WORK_DIR="${1:-$(pwd)}"
 
 # Handle subcommands
 if [ "$1" = "init" ]; then
@@ -73,7 +74,7 @@ if [ $BOT_RUNNING -eq 0 ]; then
     1)
       if [ "$HAS_SESSION" = "false" ]; then
         echo "⏳ 等待 Claude session 就緒..."
-        RESULT=$(node "$CLIENT" start 2>/dev/null)
+        RESULT=$(node "$CLIENT" start "$WORK_DIR" 2>/dev/null)
         if [ $? -ne 0 ]; then
           echo "❌ 無法啟動 session"
           exit 1
@@ -114,7 +115,7 @@ echo "🚀 Bot 啟動中..."
 # Wait for bot socket to appear and session to be ready
 echo "⏳ 等待 Claude session 就緒..."
 for i in $(seq 1 60); do
-  RESULT=$(node "$CLIENT" start 2>/dev/null)
+  RESULT=$(node "$CLIENT" start "$WORK_DIR" 2>/dev/null)
   if [ $? -eq 0 ]; then
     echo "✅ 連接中..."
     if [ -n "$TMUX" ]; then

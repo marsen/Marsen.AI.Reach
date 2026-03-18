@@ -5,9 +5,10 @@ import { homedir } from 'os'
 
 const SOCKET_PATH = join(homedir(), '.ai-reach', 'bot.sock')
 const cmd = process.argv[2]
+const workDir = process.argv[3]
 
 if (!cmd) {
-  console.error('Usage: client.mjs <status|start>')
+  console.error('Usage: client.mjs <status|start> [workDir]')
   process.exit(1)
 }
 
@@ -19,7 +20,11 @@ socket.on('error', () => {
 })
 
 socket.on('connect', () => {
-  socket.write(cmd + '\n')
+  if (cmd === 'start' && workDir) {
+    socket.write(`start:${workDir}\n`)
+  } else {
+    socket.write(cmd + '\n')
+  }
 })
 
 let output = ''
