@@ -3,7 +3,7 @@ import { createConnection } from 'net'
 import { join } from 'path'
 import { homedir } from 'os'
 
-const SOCKET_PATH = join(homedir(), '.ai-reach', 'bot.sock')
+const SOCKET_PATH = join(homedir(), '.rai', 'bot.sock')
 const cmd = process.argv[2]
 const workDir = process.argv[3]
 

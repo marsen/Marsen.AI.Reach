@@ -5,7 +5,7 @@
 ## 安裝
 
 ```bash
-npm install -g github:marsen/marsen-ai-reach
+npm install -g github:marsen/marsen-rai
 rai init
 ```
 
@@ -49,7 +49,7 @@ tmux session      ← claude-reach（持久化終端）
 
 ## 設定檔
 
-位於 `~/.ai-reach/.env`，由 `rai init` 自動建立：
+位於 `~/.rai/.env`，由 `rai init` 自動建立：
 
 ```env
 BOT_TOKEN=your_telegram_bot_token

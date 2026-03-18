@@ -6,7 +6,7 @@
 bin/
 ├── rai               # CLI 入口（bash），子命令 init/stop/status，attach tmux
 ├── client.mjs        # Unix socket client，供 rai 查詢 bot 狀態、傳入 workDir
-└── init.mjs          # 互動式初始化精靈，寫入 ~/.ai-reach/.env 並安裝 launchd 服務
+└── init.mjs          # 互動式初始化精靈，寫入 ~/.rai/.env 並安裝 launchd 服務
 src/
 ├── domain/
 │   ├── entities/Session.ts       # Session 狀態 entity
@@ -18,7 +18,7 @@ src/
 ├── infrastructure/
 │   ├── claude/TmuxClaudeAdapter.ts  # ClaudePort 實作（tmux）
 │   ├── config/env.ts                # 環境變數
-│   └── logger/SessionLogger.ts      # 對話 log 寫入 ~/.ai-reach/logs/{project}/
+│   └── logger/SessionLogger.ts      # 對話 log 寫入 ~/.rai/logs/{project}/
 └── presentation/bot.ts           # grammY bot，手動 DI Wire，Unix socket server
 ```
 
@@ -31,7 +31,7 @@ src/
 | `application/use-cases/` | 協調 domain 與 port，回傳業務結果 |
 | `infrastructure/claude/TmuxClaudeAdapter.ts` | 透過 tmux 控制 Claude CLI，管理 session 存活與訊息傳遞 |
 | `infrastructure/config/env.ts` | 從 `.env` 讀取 BOT_TOKEN / ALLOWED_USER_ID / CLAUDE_BIN |
-| `presentation/bot.ts` | grammY bot（Telegram）、白名單 middleware、指令處理、啟動/離線通知、Unix socket server（`~/.ai-reach/bot.sock`）。連線方式為 Long Polling。換平台只需替換此層。 |
+| `presentation/bot.ts` | grammY bot（Telegram）、白名單 middleware、指令處理、啟動/離線通知、Unix socket server（`~/.rai/bot.sock`）。連線方式為 Long Polling。換平台只需替換此層。 |
 | `bin/client.mjs` | Unix socket client，`status`/`info` 查詢狀態，`start <workDir>` 觸發 Claude session 啟動，供 `bin/rai` 使用 |
 
 ## 主要流程

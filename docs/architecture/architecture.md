@@ -28,7 +28,7 @@ Session 是核心業務概念，放在 domain entity，而非 use case 內的 fl
 
 ### IPC 機制 → Unix Domain Socket（取代 PID File）
 
-PID file 有 PID reuse 問題（`kill -0` 無法識別進程身份），shell script 可能誤判舊 PID 仍存活，送 SIGUSR2 給錯誤進程導致卡住。改用 Unix socket（`~/.ai-reach/bot.sock`）：socket 存在且可連線即代表 bot 在跑，天然無 PID reuse 問題。`bin/client.mjs` 作為 socket client，供 shell script 查詢狀態或觸發 session 啟動。
+PID file 有 PID reuse 問題（`kill -0` 無法識別進程身份），shell script 可能誤判舊 PID 仍存活，送 SIGUSR2 給錯誤進程導致卡住。改用 Unix socket（`~/.rai/bot.sock`）：socket 存在且可連線即代表 bot 在跑，天然無 PID reuse 問題。`bin/client.mjs` 作為 socket client，供 shell script 查詢狀態或觸發 session 啟動。
 
 ### SessionLogger 範圍 → 僅 Bot 路徑
 

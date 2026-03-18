@@ -4,7 +4,7 @@ import { join } from 'path'
 import { tmpdir } from 'os'
 import { SessionLogger } from './SessionLogger.js'
 
-const baseDir = join(tmpdir(), `ai-reach-test-${process.pid}`)
+const baseDir = join(tmpdir(), `rai-test-${process.pid}`)
 const workDir = '/some/project/MyApp'
 const logDir = join(baseDir, 'logs', 'MyApp')
 

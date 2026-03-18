@@ -5,7 +5,7 @@ import { homedir } from 'os'
 export class SessionLogger {
   private logPath: string
 
-  constructor(workDir: string, baseDir = join(homedir(), '.ai-reach')) {
+  constructor(workDir: string, baseDir = join(homedir(), '.rai')) {
     const projectName = basename(workDir)
     const logDir = join(baseDir, 'logs', projectName)
     mkdirSync(logDir, { recursive: true })
@@ -22,7 +22,7 @@ export class SessionLogger {
     appendFileSync(this.logPath, `[${ts}] ${role}: ${message}\n\n`)
   }
 
-  static cleanup(workDir: string, days = 30, baseDir = join(homedir(), '.ai-reach')): number {
+  static cleanup(workDir: string, days = 30, baseDir = join(homedir(), '.rai')): number {
     const projectName = basename(workDir)
     const logDir = join(baseDir, 'logs', projectName)
     const cutoff = Date.now() - days * 24 * 60 * 60 * 1000
