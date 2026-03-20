@@ -6,6 +6,10 @@
   "bin": {
     "rai": "bin/rai"
   },
+  "files": [
+    "bin/",
+    "src/"
+  ],
   "scripts": {
     "bot": "tsx src/presentation/bot.ts",
     "test": "vitest run",

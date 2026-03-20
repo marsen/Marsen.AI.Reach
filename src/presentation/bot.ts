@@ -3,14 +3,14 @@ import { join } from 'path'
 import { homedir } from 'os'
 import { createServer } from 'net'
 import express from 'express'
-import { middleware, Client, TextMessage } from '@line/bot-sdk'
-import { LINE_CHANNEL_SECRET, LINE_CHANNEL_ACCESS_TOKEN, ALLOWED_USER_ID, PORT } from '../infrastructure/config/env.js'
+import { PORT } from '../infrastructure/config/env.js'
 import { Session } from '../domain/entities/Session.js'
 import { TmuxClaudeAdapter, setBotPid } from '../infrastructure/claude/TmuxClaudeAdapter.js'
 import { StartSessionUseCase } from '../application/use-cases/StartSessionUseCase.js'
 import { StopSessionUseCase } from '../application/use-cases/StopSessionUseCase.js'
 import { SendMessageUseCase } from '../application/use-cases/SendMessageUseCase.js'
 import { SessionLogger } from '../infrastructure/logger/SessionLogger.js'
+import type { AdapterDeps, PlatformAdapter } from './platforms/types.js'
 
 function log(msg: string) {
   const line = `[${new Date().toISOString()}] ${msg}\n`
@@ -33,89 +33,27 @@ function ensureLogger(workDir: string) {
   if (!logger) logger = new SessionLogger(workDir)
 }
 
-// LINE client
-const lineClient = new Client({
-  channelSecret: LINE_CHANNEL_SECRET,
-  channelAccessToken: LINE_CHANNEL_ACCESS_TOKEN,
+// 載入 platform adapter（PLATFORM=line|telegram，預設 line）
+const platform = process.env.PLATFORM ?? 'line'
+const { createAdapter } = await import(`./platforms/${platform}Adapter.js`) as { createAdapter: (deps: AdapterDeps) => PlatformAdapter }
+
+const adapter = createAdapter({
+  startSession,
+  stopSession,
+  sendMessage,
+  session,
+  getWorkDir: () => currentWorkDir,
+  getLogger: () => logger,
+  setLogger: (l) => { logger = l },
+  ensureLogger,
+  log,
 })
 
-async function reply(replyToken: string, text: string) {
-  const msg: TextMessage = { type: 'text', text }
-  await lineClient.replyMessage(replyToken, msg)
-}
+log(`[bot] platform: ${platform}`)
 
-async function push(text: string) {
-  const msg: TextMessage = { type: 'text', text }
-  await lineClient.pushMessage(ALLOWED_USER_ID, msg).catch(() => {})
-}
-
-// Express + LINE Webhook
+// Express
 const app = express()
-
-app.post('/webhook', middleware({ channelSecret: LINE_CHANNEL_SECRET }), async (req, res) => {
-  res.sendStatus(200)
-
-  for (const event of req.body.events) {
-    if (event.source.userId !== ALLOWED_USER_ID) {
-      log(`[bot] blocked: ${event.source.userId}`)
-      continue
-    }
-
-    if (event.type === 'message' && event.message.type === 'text') {
-      const text: string = event.message.text
-      const replyToken: string = event.replyToken
-
-      if (text === '/start') {
-        log(`[bot] /start`)
-        await reply(replyToken, '⏳ 啟動中...')
-        const result = await startSession.execute(currentWorkDir)
-        ensureLogger(currentWorkDir)
-        if (result === 'resumed') {
-          await push(`🔄 接續對話\n📁 ${currentWorkDir}`)
-        } else {
-          await push(`🆕 新對話\n📁 ${currentWorkDir}\n\n傳訊息給 Claude 吧！`)
-        }
-
-      } else if (text === '/stop') {
-        stopSession.execute()
-        logger = null
-        await reply(replyToken, '🛑 Session 結束')
-
-      } else if (text === '/status') {
-        await reply(replyToken, session.isActive() ? '✅ Session 進行中' : '💤 沒有 session')
-
-      } else if (text === '/cleanup') {
-        const count = SessionLogger.cleanup(currentWorkDir)
-        await reply(replyToken, `🗑️ 已刪除 ${count} 筆 30 天前的 log`)
-
-      } else if (text.startsWith('/')) {
-        // 忽略未知指令
-
-      } else {
-        if (!session.isActive()) {
-          await reply(replyToken, '請先 /start')
-          continue
-        }
-
-        await reply(replyToken, '⏳ 思考中...')
-
-        try {
-          logger?.write('User', text)
-          const response = await sendMessage.execute(text)
-          logger?.write('Claude', response)
-          log(`[bot] reply length: ${response.length} preview: ${response.slice(0, 80)}`)
-
-          for (let i = 0; i < response.length; i += 5000) {
-            await push(response.slice(i, i + 5000))
-          }
-        } catch (err) {
-          log(`[bot] error: ${(err as Error).message}`)
-          await push(`❌ 錯誤：${(err as Error).message}`)
-        }
-      }
-    }
-  }
-})
+app.use(adapter.router)
 
 // Unix socket server
 const SOCKET_PATH = join(homedir(), '.rai', 'bot.sock')
@@ -167,25 +105,25 @@ socketServer.listen(SOCKET_PATH, () => {
 // Signal handlers
 process.once('SIGINT', async () => {
   cleanupSocket()
-  await push('🔴 Bot 已離線')
+  await adapter.push('🔴 Bot 已離線')
   process.exit(0)
 })
 
 process.on('SIGUSR1', async () => {
   stopSession.execute()
-  await push('💤 Claude session 已結束')
+  await adapter.push('💤 Claude session 已結束')
   log('[bot] Claude exited, session stopped')
 })
 
 process.once('SIGTERM', async () => {
   cleanupSocket()
-  await push('🔴 Bot 已離線')
+  await adapter.push('🔴 Bot 已離線')
   process.exit(0)
 })
 
 async function notifyAndExit(reason: string): Promise<never> {
   cleanupSocket()
-  await push(`🔴 Bot 異常斷線：${reason}`)
+  await adapter.push(`🔴 Bot 異常斷線：${reason}`)
   process.exit(1)
 }
 
@@ -203,7 +141,7 @@ process.on('unhandledRejection', (reason) => {
 // 啟動 HTTP server
 app.listen(PORT, () => {
   log(`[bot] webhook listening on port ${PORT}`)
-  push('✅ Bot 已上線，可以開始對話').catch(() => {})
+  adapter.push('✅ Bot 已上線，可以開始對話').catch(() => {})
 })
 
 log('🤖 Marsen.AI.Reach 啟動中...')

@@ -19,7 +19,7 @@ src/
 │   ├── claude/TmuxClaudeAdapter.ts  # ClaudePort 實作（tmux）
 │   ├── config/env.ts                # 環境變數
 │   └── logger/SessionLogger.ts      # 對話 log 寫入 ~/.rai/logs/{project}/
-└── presentation/bot.ts           # grammY bot，手動 DI Wire，Unix socket server
+└── presentation/bot.ts           # LINE Webhook bot（express），手動 DI Wire，Unix socket server
 ```
 
 ## 模組職責
@@ -30,18 +30,24 @@ src/
 | `domain/ports/ClaudePort.ts` | 定義 `run()` / `ensure(workDir)` / `reset(workDir)` 介面 |
 | `application/use-cases/` | 協調 domain 與 port，回傳業務結果 |
 | `infrastructure/claude/TmuxClaudeAdapter.ts` | 透過 tmux 控制 Claude CLI，管理 session 存活與訊息傳遞 |
-| `infrastructure/config/env.ts` | 從 `.env` 讀取 BOT_TOKEN / ALLOWED_USER_ID / CLAUDE_BIN |
-| `presentation/bot.ts` | grammY bot（Telegram）、白名單 middleware、指令處理、啟動/離線通知、Unix socket server（`~/.rai/bot.sock`）。連線方式為 Long Polling。換平台只需替換此層。 |
+| `infrastructure/config/env.ts` | 從 `.env` 讀取 LINE_CHANNEL_SECRET / LINE_CHANNEL_ACCESS_TOKEN / ALLOWED_USER_ID / CLAUDE_BIN / PORT |
+| `presentation/bot.ts` | LINE Webhook bot（express POST /webhook）、白名單過濾（userId）、指令處理、啟動/離線通知、Unix socket server（`~/.rai/bot.sock`）。換平台只需替換此層。 |
 | `bin/client.mjs` | Unix socket client，`status`/`info` 查詢狀態，`start <workDir>` 觸發 Claude session 啟動，供 `bin/rai` 使用 |
 
 ## 主要流程
 
 ```
-手機 Telegram
+手機 LINE
      │
      ▼
-bot.ts (Long Polling)
-     │  白名單過濾
+LINE Messaging API
+     │  Webhook POST
+     ▼
+Cloudflare Tunnel (rai.marsen.me)
+     │
+     ▼
+bot.ts (express POST /webhook)
+     │  白名單過濾（userId）
      ├── /start  → StartSessionUseCase → TmuxClaudeAdapter.ensure(workDir)
      ├── /stop   → StopSessionUseCase
      ├── /status → Session.isActive()
@@ -70,6 +76,7 @@ rai CLI（使用者終端機）
 
 | 日期 | 異動描述 |
 |------|---------|
+| 2026-03-19 | 訊息平台從 Telegram 改為 LINE；bot.ts 更新為 express Webhook；env.ts 移除 BOT_TOKEN 新增 LINE 金鑰；主要流程圖加入 Cloudflare Tunnel |
 | 2026-03-17 | 新增 bin/ 目錄說明（ai-reach / client.mjs / init.mjs）；新增 SessionLogger；bot.ts 加入 Unix socket server 說明 |
 | 2026-03-16 | 更新為 CA 四層目錄結構（domain / application / infrastructure / presentation） |
 | 2026-03-14 | claude-session.ts 改為 tmux 架構 |

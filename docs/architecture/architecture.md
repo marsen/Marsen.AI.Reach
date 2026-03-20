@@ -9,7 +9,7 @@
 | Domain | `src/domain/` | 核心概念與 Port 介面，零外部依賴 |
 | Application | `src/application/` | Use Cases，協調 domain 與 port |
 | Infrastructure | `src/infrastructure/` | 實作 Port（tmux adapter、env） |
-| Presentation | `src/presentation/` | grammY bot，呼叫 use cases |
+| Presentation | `src/presentation/` | LINE Webhook bot（express），呼叫 use cases |
 
 ## 設計決策
 
@@ -42,10 +42,15 @@ Bot process 原以 `&` 跑在 Terminal 子 process，Terminal 被 macOS App Nap 
 
 Bot 作為常駐服務啟動時不知道使用者的工作目錄。將 WORK_DIR 從 .env 移除，改為使用者執行 `rai` 時透過 Unix socket 傳入（預設 `pwd`，可用 `-p` 指定）。Bot 收到後以該目錄建立 Claude tmux session。
 
+### 訊息平台 → LINE Messaging API（取代 Telegram grammY）
+
+Bot 從 Telegram Long Polling（grammY）改為 LINE Messaging API（@line/bot-sdk + express Webhook）。改用 Webhook 模式需公開 HTTPS endpoint，使用 Cloudflare Named Tunnel（`rai.marsen.me`）提供固定 URL，對應本機 `localhost:57429`。換平台只需替換 `presentation/bot.ts`，application 與 domain 層不受影響。
+
 ## 異動記錄
 
 | 日期 | 異動描述 |
 |------|---------|
+| 2026-03-19 | 訊息平台從 Telegram 改為 LINE；新增 Cloudflare Named Tunnel 設計決策 |
 | 2026-03-19 | launchd 常駐服務；WORK_DIR 改為執行時傳入；CLI 改名為 rai |
 | 2026-03-17 | SessionLogger 設計決策：僅記錄 bot 路徑，不記錄直接 tmux 互動 |
 | 2026-03-17 | IPC 機制從 PID file 改為 Unix Domain Socket；新增 bin/client.mjs socket client；移除 PID file、SIGUSR2、session.ready file |
