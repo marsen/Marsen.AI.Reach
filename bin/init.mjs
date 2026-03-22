@@ -35,6 +35,8 @@ const platform = await select({
 })
 
 let platformValues = {}
+let tunnelName = ''
+let hasCloudflared = false
 if (platform === 'telegram') {
   const botToken = await password({
     message: 'BOT_TOKEN',
@@ -69,11 +71,34 @@ if (platform === 'telegram') {
     default: existing.PORT ?? '57429',
     validate: (v) => /^\d+$/.test(v) ? true : '請輸入數字',
   })
+
+  // cloudflared tunnel
+  let webhookBaseUrl = ''
+  hasCloudflared = (() => { try { execSync('command -v cloudflared', { stdio: 'ignore' }); return true } catch { return false } })()
+  if (!hasCloudflared) {
+    console.log('\n⚠️  未偵測到 cloudflared，LINE Webhook 需要公開 HTTPS endpoint。')
+    console.log('   安裝方式：brew install cloudflared')
+    console.log('   安裝後重新執行 rai init 以完成設定。\n')
+  } else {
+    tunnelName = await input({
+      message: 'Cloudflare Tunnel 名稱（用於 cloudflared tunnel run <name>）',
+      default: existing.CLOUDFLARED_TUNNEL ?? '',
+    })
+    webhookBaseUrl = await input({
+      message: 'Webhook 公開 URL（例：https://rai.example.com）',
+      default: existing.WEBHOOK_BASE_URL ?? '',
+    })
+    console.log(`\n   Webhook URL：${webhookBaseUrl}/webhook`)
+    console.log('   請確認此 URL 已設定至 LINE Developer Console。\n')
+  }
+
   platformValues = {
     LINE_CHANNEL_SECRET: channelSecret || existing.LINE_CHANNEL_SECRET,
     LINE_CHANNEL_ACCESS_TOKEN: channelToken || existing.LINE_CHANNEL_ACCESS_TOKEN,
     ALLOWED_USER_ID: allowedUserId || existing.ALLOWED_USER_ID,
     PORT: port,
+    ...(tunnelName ? { CLOUDFLARED_TUNNEL: tunnelName } : {}),
+    ...(webhookBaseUrl ? { WEBHOOK_BASE_URL: webhookBaseUrl } : {}),
   }
 }
 
@@ -145,4 +170,50 @@ try {
 } catch {
   console.log(`⚠️  服務安裝完成，但啟動失敗，請手動執行：`)
   console.log(`   launchctl load "${PLIST_PATH}"`)
+}
+
+// Install cloudflared launchd service（LINE only）
+if (platform === 'line' && tunnelName && hasCloudflared) {
+  const CLOUDFLARED_BIN = execSync('which cloudflared', { encoding: 'utf-8' }).trim()
+  const CLOUDFLARED_LABEL = 'com.marsen.cloudflared'
+  const CLOUDFLARED_PLIST_PATH = join(PLIST_DIR, `${CLOUDFLARED_LABEL}.plist`)
+  const CLOUDFLARED_LOG = join(CONFIG_DIR, 'cloudflared.log')
+
+  const cloudflaredPlist = `<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>${CLOUDFLARED_LABEL}</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>${CLOUDFLARED_BIN}</string>
+    <string>tunnel</string>
+    <string>run</string>
+    <string>${tunnelName}</string>
+  </array>
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>HOME</key>
+    <string>${homedir()}</string>
+  </dict>
+  <key>StandardOutPath</key>
+  <string>${CLOUDFLARED_LOG}</string>
+  <key>StandardErrorPath</key>
+  <string>${CLOUDFLARED_LOG}</string>
+  <key>RunAtLoad</key>
+  <true/>
+  <key>KeepAlive</key>
+  <true/>
+</dict>
+</plist>
+`
+  writeFileSync(CLOUDFLARED_PLIST_PATH, cloudflaredPlist)
+  try {
+    execSync(`launchctl unload "${CLOUDFLARED_PLIST_PATH}" 2>/dev/null; launchctl load "${CLOUDFLARED_PLIST_PATH}"`)
+    console.log(`✅ Cloudflare Tunnel 服務已安裝（${CLOUDFLARED_LABEL}）`)
+  } catch {
+    console.log(`⚠️  Cloudflare Tunnel plist 已產生，請手動執行：`)
+    console.log(`   launchctl load "${CLOUDFLARED_PLIST_PATH}"`)
+  }
 }
