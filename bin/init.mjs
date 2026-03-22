@@ -39,8 +39,8 @@ let tunnelName = ''
 let hasCloudflared = false
 if (platform === 'telegram') {
   const botToken = await password({
-    message: 'BOT_TOKEN',
-    default: existing.BOT_TOKEN,
+    message: 'TELEGRAM_BOT_TOKEN',
+    default: existing.TELEGRAM_BOT_TOKEN,
     mask: true,
   })
   const telegramUserId = await input({
@@ -48,7 +48,7 @@ if (platform === 'telegram') {
     default: existing.TELEGRAM_USER_ID,
   })
   platformValues = {
-    BOT_TOKEN: botToken || existing.BOT_TOKEN,
+    TELEGRAM_BOT_TOKEN: botToken || existing.TELEGRAM_BOT_TOKEN,
     TELEGRAM_USER_ID: telegramUserId || existing.TELEGRAM_USER_ID,
   }
 } else {
@@ -114,9 +114,10 @@ const values = {
 }
 
 mkdirSync(CONFIG_DIR, { recursive: true })
+const finalValues = { ...existing, ...values }
 writeFileSync(
   ENV_FILE,
-  Object.entries(values).map(([k, v]) => `${k}=${v}`).join('\n') + '\n'
+  Object.entries(finalValues).map(([k, v]) => `${k}=${v}`).join('\n') + '\n'
 )
 
 console.log(`\n✅ 設定完成，存至 ${ENV_FILE}`)
