@@ -20,4 +20,5 @@ export interface AdapterDeps {
 export interface PlatformAdapter {
   router: express.Router
   push(text: string): Promise<void>
+  httpPort: number | null  // null 表示不需要 HTTP server（如 Telegram Long Polling）
 }

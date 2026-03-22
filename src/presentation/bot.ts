@@ -3,7 +3,6 @@ import { join } from 'path'
 import { homedir } from 'os'
 import { createServer } from 'net'
 import express from 'express'
-import { PORT } from '../infrastructure/config/env.js'
 import { Session } from '../domain/entities/Session.js'
 import { TmuxClaudeAdapter, setBotPid } from '../infrastructure/claude/TmuxClaudeAdapter.js'
 import { StartSessionUseCase } from '../application/use-cases/StartSessionUseCase.js'
@@ -74,10 +73,12 @@ const socketServer = createServer((socket) => {
       const cmd = line.trim()
       if (!cmd) continue
       if (cmd === 'info') {
+        if (session.isActive() && !claude.isRunning()) session.stop()
         const info = JSON.stringify({ session: session.isActive() ? 'active' : 'inactive', workDir: currentWorkDir })
         socket.write(info + '\n')
         socket.end()
       } else if (cmd === 'status') {
+        if (session.isActive() && !claude.isRunning()) session.stop()
         socket.write(session.isActive() ? 'active\n' : 'inactive\n')
         socket.end()
       } else if (cmd.startsWith('start')) {
@@ -138,10 +139,12 @@ process.on('unhandledRejection', (reason) => {
   notifyAndExit(msg)
 })
 
-// 啟動 HTTP server
-app.listen(PORT, () => {
-  log(`[bot] webhook listening on port ${PORT}`)
-  adapter.push('✅ Bot 已上線，可以開始對話').catch(() => {})
-})
+// 啟動 HTTP server（僅 Webhook 平台需要，如 LINE）
+if (adapter.httpPort !== null) {
+  app.listen(adapter.httpPort, () => {
+    log(`[bot] webhook listening on port ${adapter.httpPort}`)
+    adapter.push('✅ Bot 已上線，可以開始對話').catch(() => {})
+  })
+}
 
 log('🤖 Marsen.AI.Reach 啟動中...')

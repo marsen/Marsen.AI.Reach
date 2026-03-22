@@ -21,7 +21,7 @@ SUBCOMMAND=""
 WORK_DIR=""
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    init|stop|status) SUBCOMMAND="$1"; shift ;;
+    init|start|stop|status) SUBCOMMAND="$1"; shift ;;
     -p|--path) WORK_DIR="$2"; shift 2 ;;
     *) WORK_DIR="$1"; shift ;;
   esac
@@ -99,12 +99,12 @@ if [ $BOT_RUNNING -eq 0 ]; then
 
   echo "⚠️  Bot 已在執行中"
   echo "    Claude session：$SESSION_STATUS"
-  echo "    目前目錄：${CURRENT_WORK:-（空）}"
+  echo "    目前目錄：${CURRENT_WORK:-(空)}"
   [ "$CURRENT_WORK" != "$WORK_DIR" ] && echo "    新目錄：  $WORK_DIR"
   echo ""
   if [ "$HAS_SESSION" = "true" ]; then
-    echo "  [1] 進入現有 session（$CURRENT_WORK）"
-    echo "  [2] 切換到新目錄重啟（$WORK_DIR）"
+    echo "  [1] 進入現有 session ($CURRENT_WORK)"
+    echo "  [2] 切換到新目錄重啟 ($WORK_DIR)"
     echo "  [3] 取消"
     echo ""
     printf "請選擇 [1-3]: "

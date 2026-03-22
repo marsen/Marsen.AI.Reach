@@ -1,6 +1,6 @@
 import express from 'express'
 import { middleware, Client, TextMessage } from '@line/bot-sdk'
-import { LINE_CHANNEL_SECRET, LINE_CHANNEL_ACCESS_TOKEN, ALLOWED_USER_ID } from '../../infrastructure/config/env.js'
+import { LINE_CHANNEL_SECRET, LINE_CHANNEL_ACCESS_TOKEN, ALLOWED_USER_ID, PORT } from '../../infrastructure/config/env.js'
 import { SessionLogger } from '../../infrastructure/logger/SessionLogger.js'
 import type { AdapterDeps, PlatformAdapter } from './types.js'
 
@@ -24,7 +24,8 @@ export function createAdapter(deps: AdapterDeps): PlatformAdapter {
 
   const router = express.Router()
 
-  router.post('/webhook', middleware({ channelSecret: LINE_CHANNEL_SECRET }), async (req, res) => {
+  router.post('/webhook', (req, _res, next) => { log(`[bot] POST /webhook hit`); next() }, middleware({ channelSecret: LINE_CHANNEL_SECRET }), async (req, res) => {
+    log(`[bot] webhook received, events: ${req.body.events?.length ?? 0}`)
     res.sendStatus(200)
 
     for (const event of req.body.events) {
@@ -90,5 +91,5 @@ export function createAdapter(deps: AdapterDeps): PlatformAdapter {
     }
   })
 
-  return { router, push }
+  return { router, push, httpPort: PORT }
 }
