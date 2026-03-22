@@ -129,6 +129,10 @@ export class TmuxClaudeAdapter implements ClaudePort {
     if (sessionExists()) tmux(`kill-session -t ${SESSION}`)
     await createSession(workDir)
   }
+
+  isRunning(): boolean {
+    return sessionExists() && isClaudeRunning()
+  }
 }
 
 async function runClaude(message: string): Promise<string> {

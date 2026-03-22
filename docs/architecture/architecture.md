@@ -9,7 +9,7 @@
 | Domain | `src/domain/` | 核心概念與 Port 介面，零外部依賴 |
 | Application | `src/application/` | Use Cases，協調 domain 與 port |
 | Infrastructure | `src/infrastructure/` | 實作 Port（tmux adapter、env） |
-| Presentation | `src/presentation/` | grammY bot，呼叫 use cases |
+| Presentation | `src/presentation/` | LINE Webhook bot（express），呼叫 use cases |
 
 ## 設計決策
 
@@ -42,10 +42,26 @@ Bot process 原以 `&` 跑在 Terminal 子 process，Terminal 被 macOS App Nap 
 
 Bot 作為常駐服務啟動時不知道使用者的工作目錄。將 WORK_DIR 從 .env 移除，改為使用者執行 `rai` 時透過 Unix socket 傳入（預設 `pwd`，可用 `-p` 指定）。Bot 收到後以該目錄建立 Claude tmux session。
 
+### 訊息平台 → Platform Adapter Pattern（LINE / Telegram 動態切換）
+
+`presentation/bot.ts` 作為容器，透過 `PLATFORM` env 動態 import 對應 adapter（`lineAdapter.js` / `telegramAdapter.js`）。所有 adapter 實作共同介面 `PlatformAdapter`（`router`、`push()`、`httpPort`），bot.ts 本身不含任何平台邏輯。
+
+- **LINE**：`@line/bot-sdk` Webhook 模式，需 Cloudflare Named Tunnel，`httpPort: PORT`
+- **Telegram**：`grammY` Long Polling 模式，不需 HTTP server，`httpPort: null`
+- `bot.ts` 條件式 `app.listen`：只在 `adapter.httpPort !== null` 時啟動 HTTP server
+
+換平台只需修改 `.env` 的 `PLATFORM` 值並重啟，application 與 domain 層不受影響。
+
+### isRunning() → 防止 session 狀態誤判
+
+`ClaudePort` 新增 `isRunning(): boolean`，由 `TmuxClaudeAdapter` 實作（tmux session 存在 + pgrep Claude process）。bot socket 的 `status` / `info` 指令在回應前先呼叫 `isRunning()`，若 session 已消失則同步更新記憶體狀態，避免回傳「active」但 Claude 實際已死的誤判。
+
 ## 異動記錄
 
 | 日期 | 異動描述 |
 |------|---------|
+| 2026-03-21 | Platform Adapter Pattern：bot.ts 改為容器，抽出 LineAdapter / TelegramAdapter / types；httpPort 介面；條件式 app.listen；ClaudePort.isRunning() 防誤判 |
+| 2026-03-19 | 訊息平台從 Telegram 改為 LINE；新增 Cloudflare Named Tunnel 設計決策 |
 | 2026-03-19 | launchd 常駐服務；WORK_DIR 改為執行時傳入；CLI 改名為 rai |
 | 2026-03-17 | SessionLogger 設計決策：僅記錄 bot 路徑，不記錄直接 tmux 互動 |
 | 2026-03-17 | IPC 機制從 PID file 改為 Unix Domain Socket；新增 bin/client.mjs socket client；移除 PID file、SIGUSR2、session.ready file |
