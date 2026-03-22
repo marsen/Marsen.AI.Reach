@@ -98,6 +98,7 @@ const TSX = join(PACKAGE_DIR, 'node_modules', '.bin', 'tsx')
 const BOT_TS = join(PACKAGE_DIR, 'src', 'presentation', 'bot.ts')
 const LOG_PATH = join(CONFIG_DIR, 'bot.log')
 const NODE_BIN_DIR = dirname(process.execPath)
+const HOMEBREW_BIN = '/opt/homebrew/bin'
 
 const plist = `<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -115,7 +116,7 @@ const plist = `<?xml version="1.0" encoding="UTF-8"?>
     <key>HOME</key>
     <string>${homedir()}</string>
     <key>PATH</key>
-    <string>${NODE_BIN_DIR}:/usr/local/bin:/usr/bin:/bin</string>
+    <string>${NODE_BIN_DIR}:${HOMEBREW_BIN}:/usr/local/bin:/usr/bin:/bin</string>
   </dict>
   <key>StandardOutPath</key>
   <string>${LOG_PATH}</string>
