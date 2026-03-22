@@ -64,10 +64,16 @@ if (platform === 'telegram') {
     message: 'ALLOWED_USER_ID (LINE userId)',
     default: existing.ALLOWED_USER_ID,
   })
+  const port = await input({
+    message: 'PORT（Webhook 監聽埠）',
+    default: existing.PORT ?? '57429',
+    validate: (v) => /^\d+$/.test(v) ? true : '請輸入數字',
+  })
   platformValues = {
     LINE_CHANNEL_SECRET: channelSecret || existing.LINE_CHANNEL_SECRET,
     LINE_CHANNEL_ACCESS_TOKEN: channelToken || existing.LINE_CHANNEL_ACCESS_TOKEN,
     ALLOWED_USER_ID: allowedUserId || existing.ALLOWED_USER_ID,
+    PORT: port,
   }
 }
 
