@@ -1,18 +1,15 @@
 #!/usr/bin/env node
-import { createInterface } from 'readline'
 import { writeFileSync, mkdirSync, existsSync, readFileSync } from 'fs'
 import { execSync } from 'child_process'
 import { join, dirname } from 'path'
 import { homedir } from 'os'
 import { fileURLToPath } from 'url'
+import { select, input, password } from '@inquirer/prompts'
 
 const PACKAGE_DIR = join(dirname(fileURLToPath(import.meta.url)), '..')
 
 const CONFIG_DIR = join(homedir(), '.rai')
 const ENV_FILE = join(CONFIG_DIR, '.env')
-
-const rl = createInterface({ input: process.stdin, output: process.stdout })
-const ask = (q) => new Promise(resolve => rl.question(q, resolve))
 
 // Load existing values
 let existing = {}
@@ -28,26 +25,61 @@ if (existsSync(ENV_FILE)) {
 
 console.log('🤖 rai 設定精靈\n')
 
-const channelSecret = await ask(
-  `LINE_CHANNEL_SECRET${existing.LINE_CHANNEL_SECRET ? ` [現有: ${existing.LINE_CHANNEL_SECRET.slice(0, 6)}...]` : ''}: `
-)
-const channelToken = await ask(
-  `LINE_CHANNEL_ACCESS_TOKEN${existing.LINE_CHANNEL_ACCESS_TOKEN ? ` [現有: ${existing.LINE_CHANNEL_ACCESS_TOKEN.slice(0, 6)}...]` : ''}: `
-)
-const allowedUserId = await ask(
-  `ALLOWED_USER_ID (LINE userId)${existing.ALLOWED_USER_ID ? ` [${existing.ALLOWED_USER_ID}]` : ''}: `
-)
-const claudeBin = await ask(
-  `CLAUDE_BIN [${existing.CLAUDE_BIN || '/usr/local/bin/claude'}]: `
-)
+const platform = await select({
+  message: '選擇平台',
+  choices: [
+    { value: 'line', name: 'LINE Messaging API（Webhook）' },
+    { value: 'telegram', name: 'Telegram（Long Polling）' },
+  ],
+  default: existing.PLATFORM ?? 'line',
+})
 
-rl.close()
+let platformValues = {}
+if (platform === 'telegram') {
+  const botToken = await password({
+    message: 'BOT_TOKEN',
+    default: existing.BOT_TOKEN,
+    mask: true,
+  })
+  const telegramUserId = await input({
+    message: 'TELEGRAM_USER_ID',
+    default: existing.TELEGRAM_USER_ID,
+  })
+  platformValues = {
+    BOT_TOKEN: botToken || existing.BOT_TOKEN,
+    TELEGRAM_USER_ID: telegramUserId || existing.TELEGRAM_USER_ID,
+  }
+} else {
+  const channelSecret = await password({
+    message: 'LINE_CHANNEL_SECRET',
+    default: existing.LINE_CHANNEL_SECRET,
+    mask: true,
+  })
+  const channelToken = await password({
+    message: 'LINE_CHANNEL_ACCESS_TOKEN',
+    default: existing.LINE_CHANNEL_ACCESS_TOKEN,
+    mask: true,
+  })
+  const allowedUserId = await input({
+    message: 'ALLOWED_USER_ID (LINE userId)',
+    default: existing.ALLOWED_USER_ID,
+  })
+  platformValues = {
+    LINE_CHANNEL_SECRET: channelSecret || existing.LINE_CHANNEL_SECRET,
+    LINE_CHANNEL_ACCESS_TOKEN: channelToken || existing.LINE_CHANNEL_ACCESS_TOKEN,
+    ALLOWED_USER_ID: allowedUserId || existing.ALLOWED_USER_ID,
+  }
+}
+
+const claudeBin = await input({
+  message: 'CLAUDE_BIN',
+  default: existing.CLAUDE_BIN || '/usr/local/bin/claude',
+})
 
 const values = {
-  LINE_CHANNEL_SECRET: channelSecret.trim() || existing.LINE_CHANNEL_SECRET,
-  LINE_CHANNEL_ACCESS_TOKEN: channelToken.trim() || existing.LINE_CHANNEL_ACCESS_TOKEN,
-  ALLOWED_USER_ID: allowedUserId.trim() || existing.ALLOWED_USER_ID,
-  CLAUDE_BIN: claudeBin.trim() || existing.CLAUDE_BIN || '/usr/local/bin/claude',
+  PLATFORM: platform,
+  ...platformValues,
+  CLAUDE_BIN: claudeBin,
 }
 
 mkdirSync(CONFIG_DIR, { recursive: true })

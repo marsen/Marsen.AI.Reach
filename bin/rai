@@ -102,20 +102,37 @@ if [ $BOT_RUNNING -eq 0 ]; then
   echo "    目前目錄：${CURRENT_WORK:-(空)}"
   [ "$CURRENT_WORK" != "$WORK_DIR" ] && echo "    新目錄：  $WORK_DIR"
   echo ""
-  if [ "$HAS_SESSION" = "true" ]; then
-    echo "  [1] 進入現有 session ($CURRENT_WORK)"
-    echo "  [2] 切換到新目錄重啟 ($WORK_DIR)"
-    echo "  [3] 取消"
-    echo ""
-    printf "請選擇 [1-3]: "
-    read choice
+  if command -v gum >/dev/null 2>&1; then
+    if [ "$HAS_SESSION" = "true" ]; then
+      selected=$(gum choose "進入現有 session ($CURRENT_WORK)" "切換到新目錄重啟 ($WORK_DIR)" "取消")
+      case "$selected" in
+        "進入現有"*) choice=1 ;;
+        "切換到"*) choice=2 ;;
+        *) choice=3 ;;
+      esac
+    else
+      selected=$(gum choose "啟動新 session" "取消")
+      case "$selected" in
+        "啟動"*) choice=1 ;;
+        *) choice=3 ;;
+      esac
+    fi
   else
-    echo "  [1] 啟動新 session"
-    echo "  [2] 取消"
-    echo ""
-    printf "請選擇 [1-2]: "
-    read choice
-    [ "$choice" = "2" ] && choice="3"
+    if [ "$HAS_SESSION" = "true" ]; then
+      echo "  [1] 進入現有 session ($CURRENT_WORK)"
+      echo "  [2] 切換到新目錄重啟 ($WORK_DIR)"
+      echo "  [3] 取消"
+      echo ""
+      printf "請選擇 [1-3]: "
+      read choice
+    else
+      echo "  [1] 啟動新 session"
+      echo "  [2] 取消"
+      echo ""
+      printf "請選擇 [1-2]: "
+      read choice
+      [ "$choice" = "2" ] && choice="3"
+    fi
   fi
 
   case "$choice" in
