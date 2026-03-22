@@ -6,9 +6,9 @@ import type { AdapterDeps, PlatformAdapter } from './types.js'
 export function createAdapter(deps: AdapterDeps): PlatformAdapter {
   const { startSession, stopSession, sendMessage, session, getWorkDir, getLogger, setLogger, ensureLogger, log } = deps
 
-  const BOT_TOKEN = process.env.BOT_TOKEN
-  if (!BOT_TOKEN) throw new Error('PLATFORM=telegram 需要設定 BOT_TOKEN')
-  const TELEGRAM_USER_ID = Number(process.env.TELEGRAM_USER_ID ?? process.env.ALLOWED_USER_ID)
+  const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN
+  if (!BOT_TOKEN) throw new Error('PLATFORM=telegram 需要設定 TELEGRAM_BOT_TOKEN')
+  const TELEGRAM_USER_ID = Number(process.env.TELEGRAM_USER_ID)
   if (!TELEGRAM_USER_ID) throw new Error('PLATFORM=telegram 需要設定 TELEGRAM_USER_ID')
 
   const bot = new Bot(BOT_TOKEN)
