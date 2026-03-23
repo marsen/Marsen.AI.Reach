@@ -52,6 +52,16 @@ Bot 作為常駐服務啟動時不知道使用者的工作目錄。將 WORK_DIR 
 
 換平台只需修改 `.env` 的 `PLATFORM` 值並重啟，application 與 domain 層不受影響。
 
+### rai init → 互動式精靈（@inquirer/prompts）
+
+`bin/init.mjs` 改用 `@inquirer/prompts`（select / input / password / confirm）取代 readline，提供方向鍵選單、token 遮蔽、已設定檢查等功能。設計原則：
+
+- **不洩漏敏感值**：已設定的金鑰只顯示「已設定 ✅」，不顯示實際內容
+- **可重複執行**：已設定時詢問是否重新設定，選 N 直接沿用，可用於平台切換
+- **自動重啟確認**：寫入 .env 後 reload launchd service，輪詢 socket 最多 20 秒確認 bot 啟動
+- **安全性**：.env 寫入後執行 `chmod 600`
+- **cloudflared 整合**：LINE 平台偵測 cloudflared，引導填入 tunnel 名稱與 webhook URL，自動安裝 `com.marsen.cloudflared` launchd service
+
 ### isRunning() → 防止 session 狀態誤判
 
 `ClaudePort` 新增 `isRunning(): boolean`，由 `TmuxClaudeAdapter` 實作（tmux session 存在 + pgrep Claude process）。bot socket 的 `status` / `info` 指令在回應前先呼叫 `isRunning()`，若 session 已消失則同步更新記憶體狀態，避免回傳「active」但 Claude 實際已死的誤判。
@@ -60,6 +70,7 @@ Bot 作為常駐服務啟動時不知道使用者的工作目錄。將 WORK_DIR 
 
 | 日期 | 異動描述 |
 |------|---------|
+| 2026-03-24 | rai init 互動式精靈：@inquirer/prompts、已設定檢查、cloudflared launchd 整合、.env chmod 600、bot 啟動確認 |
 | 2026-03-21 | Platform Adapter Pattern：bot.ts 改為容器，抽出 LineAdapter / TelegramAdapter / types；httpPort 介面；條件式 app.listen；ClaudePort.isRunning() 防誤判 |
 | 2026-03-19 | 訊息平台從 Telegram 改為 LINE；新增 Cloudflare Named Tunnel 設計決策 |
 | 2026-03-19 | launchd 常駐服務；WORK_DIR 改為執行時傳入；CLI 改名為 rai |
