@@ -2,8 +2,8 @@
 
 ## 專案概述
 
-Telegram bot，橋接使用者與 Claude Code CLI。
-Tech: Node.js + TypeScript (ESM) + grammY
+LINE / Telegram bot，橋接使用者與 Claude Code CLI，支援多平台切換。
+Tech: Node.js + TypeScript (ESM) + @line/bot-sdk + grammY + @inquirer/prompts
 
 ## 進度追蹤
 
@@ -23,9 +23,13 @@ Tech: Node.js + TypeScript (ESM) + grammY
 - [x] WORK_DIR 重構：移除 .env，改由執行時透過 socket 傳入
 - [x] CLI 改名為 rai，支援 -p 旗標、stop/status 子命令
 - [x] launchd 常駐服務：rai init 自動安裝，開機自動啟動
-- [ ] 驗收：rai CLI 7 個使用情境
+- [x] 驗收：rai CLI 7 個使用情境
+- [x] LINE 換平台（Platform Adapter Pattern，PLATFORM env 切換）
+- [x] Platform Adapter 重構（LineAdapter / TelegramAdapter / types）
+- [x] rai init 互動式精靈（@inquirer/prompts，平台選擇、已設定檢查）
+- [x] cloudflared tunnel 整合至 rai init（launchd service）
+- [x] rai 選單支援 gum choose（無 gum 自動 fallback）
 - [ ] Ghostty 捲動問題
-- [ ] LINE 換平台
 
 ## 架構文件
 

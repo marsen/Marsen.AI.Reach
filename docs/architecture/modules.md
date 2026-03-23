@@ -40,6 +40,7 @@ src/
 | `presentation/platforms/types.ts` | `AdapterDeps`（注入依賴）、`PlatformAdapter`（`router` / `push()` / `httpPort`）介面 |
 | `presentation/platforms/LineAdapter.ts` | LINE Webhook：`@line/bot-sdk` middleware + express router，白名單過濾，指令處理，`httpPort: PORT` |
 | `presentation/platforms/TelegramAdapter.ts` | Telegram Long Polling：grammY bot，白名單過濾，指令處理，`httpPort: null` |
+| `bin/init.mjs` | 互動式設定精靈（@inquirer/prompts）：平台選擇、已設定檢查（不顯示敏感值）、寫入 .env（chmod 600）、安裝 bot + cloudflared launchd service、輪詢確認 bot 啟動 |
 | `bin/client.mjs` | Unix socket client，`status`/`info` 查詢狀態，`start <workDir>` 觸發 Claude session 啟動，供 `bin/rai` 使用 |
 
 ## 主要流程
@@ -84,6 +85,7 @@ rai CLI（使用者終端機）
 
 | 日期 | 異動描述 |
 |------|---------|
+| 2026-03-24 | init.mjs 重構：@inquirer/prompts、已設定檢查、cloudflared launchd service、bot 啟動確認 |
 | 2026-03-21 | Platform Adapter 重構：bot.ts 改為容器，新增 platforms/ 目錄（types / LineAdapter / TelegramAdapter）；ClaudePort 新增 isRunning()；TmuxClaudeAdapter 實作 isRunning() |
 | 2026-03-19 | 訊息平台從 Telegram 改為 LINE；bot.ts 更新為 express Webhook；env.ts 移除 BOT_TOKEN 新增 LINE 金鑰；主要流程圖加入 Cloudflare Tunnel |
 | 2026-03-17 | 新增 bin/ 目錄說明（ai-reach / client.mjs / init.mjs）；新增 SessionLogger；bot.ts 加入 Unix socket server 說明 |
