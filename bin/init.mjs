@@ -1,17 +1,19 @@
 #!/usr/bin/env node
-import { writeFileSync, mkdirSync, existsSync, readFileSync } from 'fs'
+import { writeFileSync, mkdirSync, existsSync, readFileSync, chmodSync } from 'fs'
 import { execSync } from 'child_process'
 import { join, dirname } from 'path'
 import { homedir } from 'os'
 import { fileURLToPath } from 'url'
-import { select, input, password } from '@inquirer/prompts'
+import { select, input, password, confirm } from '@inquirer/prompts'
 
 const PACKAGE_DIR = join(dirname(fileURLToPath(import.meta.url)), '..')
-
 const CONFIG_DIR = join(homedir(), '.rai')
 const ENV_FILE = join(CONFIG_DIR, '.env')
+const LAUNCHD_LABEL = 'com.marsen.rai'
+const PLIST_DIR = join(homedir(), 'Library', 'LaunchAgents')
+const PLIST_PATH = join(PLIST_DIR, `${LAUNCHD_LABEL}.plist`)
 
-// Load existing values
+// Load existing values（keys only，不暴露值）
 let existing = {}
 if (existsSync(ENV_FILE)) {
   for (const line of readFileSync(ENV_FILE, 'utf-8').split('\n')) {
@@ -23,8 +25,12 @@ if (existsSync(ENV_FILE)) {
   }
 }
 
+const isSet = (key) => !!existing[key]
+const setStatus = (key) => isSet(key) ? '已設定 ✅' : '未設定'
+
 console.log('🤖 rai 設定精靈\n')
 
+// 選擇平台
 const platform = await select({
   message: '選擇平台',
   choices: [
@@ -34,46 +40,68 @@ const platform = await select({
   default: existing.PLATFORM ?? 'line',
 })
 
+// 平台金鑰設定
 let platformValues = {}
-let tunnelName = ''
+let tunnelName = existing.CLOUDFLARED_TUNNEL ?? ''
 let hasCloudflared = false
+
 if (platform === 'telegram') {
-  const botToken = await password({
-    message: 'TELEGRAM_BOT_TOKEN',
-    default: existing.TELEGRAM_BOT_TOKEN,
-    mask: true,
-  })
-  const telegramUserId = await input({
-    message: 'TELEGRAM_USER_ID',
-    default: existing.TELEGRAM_USER_ID,
-  })
-  platformValues = {
-    TELEGRAM_BOT_TOKEN: botToken || existing.TELEGRAM_BOT_TOKEN,
-    TELEGRAM_USER_ID: telegramUserId || existing.TELEGRAM_USER_ID,
+  const telegramConfigured = isSet('TELEGRAM_BOT_TOKEN') && isSet('TELEGRAM_USER_ID')
+  console.log(`\n  TELEGRAM_BOT_TOKEN：${setStatus('TELEGRAM_BOT_TOKEN')}`)
+  console.log(`  TELEGRAM_USER_ID：${setStatus('TELEGRAM_USER_ID')}\n`)
+
+  const reconfigure = telegramConfigured
+    ? await confirm({ message: '要重新設定 Telegram 金鑰嗎？', default: false })
+    : true
+
+  if (reconfigure) {
+    const botToken = await password({ message: 'TELEGRAM_BOT_TOKEN', mask: true })
+    const telegramUserId = await input({ message: 'TELEGRAM_USER_ID', default: existing.TELEGRAM_USER_ID })
+    platformValues = {
+      TELEGRAM_BOT_TOKEN: botToken || existing.TELEGRAM_BOT_TOKEN,
+      TELEGRAM_USER_ID: telegramUserId || existing.TELEGRAM_USER_ID,
+    }
+  } else {
+    platformValues = {
+      TELEGRAM_BOT_TOKEN: existing.TELEGRAM_BOT_TOKEN,
+      TELEGRAM_USER_ID: existing.TELEGRAM_USER_ID,
+    }
   }
 } else {
-  const channelSecret = await password({
-    message: 'LINE_CHANNEL_SECRET',
-    default: existing.LINE_CHANNEL_SECRET,
-    mask: true,
-  })
-  const channelToken = await password({
-    message: 'LINE_CHANNEL_ACCESS_TOKEN',
-    default: existing.LINE_CHANNEL_ACCESS_TOKEN,
-    mask: true,
-  })
-  const allowedUserId = await input({
-    message: 'ALLOWED_USER_ID (LINE userId)',
-    default: existing.ALLOWED_USER_ID,
-  })
+  const lineConfigured = isSet('LINE_CHANNEL_SECRET') && isSet('LINE_CHANNEL_ACCESS_TOKEN') && isSet('ALLOWED_USER_ID')
+  console.log(`\n  LINE_CHANNEL_SECRET：${setStatus('LINE_CHANNEL_SECRET')}`)
+  console.log(`  LINE_CHANNEL_ACCESS_TOKEN：${setStatus('LINE_CHANNEL_ACCESS_TOKEN')}`)
+  console.log(`  ALLOWED_USER_ID：${setStatus('ALLOWED_USER_ID')}\n`)
+
+  const reconfigure = lineConfigured
+    ? await confirm({ message: '要重新設定 LINE 金鑰嗎？', default: false })
+    : true
+
+  if (reconfigure) {
+    const channelSecret = await password({ message: 'LINE_CHANNEL_SECRET', mask: true })
+    const channelToken = await password({ message: 'LINE_CHANNEL_ACCESS_TOKEN', mask: true })
+    const allowedUserId = await input({ message: 'ALLOWED_USER_ID (LINE userId)', default: existing.ALLOWED_USER_ID })
+    platformValues = {
+      LINE_CHANNEL_SECRET: channelSecret || existing.LINE_CHANNEL_SECRET,
+      LINE_CHANNEL_ACCESS_TOKEN: channelToken || existing.LINE_CHANNEL_ACCESS_TOKEN,
+      ALLOWED_USER_ID: allowedUserId || existing.ALLOWED_USER_ID,
+    }
+  } else {
+    platformValues = {
+      LINE_CHANNEL_SECRET: existing.LINE_CHANNEL_SECRET,
+      LINE_CHANNEL_ACCESS_TOKEN: existing.LINE_CHANNEL_ACCESS_TOKEN,
+      ALLOWED_USER_ID: existing.ALLOWED_USER_ID,
+    }
+  }
+
   const port = await input({
     message: 'PORT（Webhook 監聽埠）',
     default: existing.PORT ?? '57429',
     validate: (v) => /^\d+$/.test(v) ? true : '請輸入數字',
   })
+  platformValues.PORT = port
 
   // cloudflared tunnel
-  let webhookBaseUrl = ''
   hasCloudflared = (() => { try { execSync('command -v cloudflared', { stdio: 'ignore' }); return true } catch { return false } })()
   if (!hasCloudflared) {
     console.log('\n⚠️  未偵測到 cloudflared，LINE Webhook 需要公開 HTTPS endpoint。')
@@ -81,51 +109,43 @@ if (platform === 'telegram') {
     console.log('   安裝後重新執行 rai init 以完成設定。\n')
   } else {
     tunnelName = await input({
-      message: 'Cloudflare Tunnel 名稱（用於 cloudflared tunnel run <name>）',
+      message: 'Cloudflare Tunnel 名稱',
       default: existing.CLOUDFLARED_TUNNEL ?? '',
     })
-    webhookBaseUrl = await input({
+    const webhookBaseUrl = await input({
       message: 'Webhook 公開 URL（例：https://rai.example.com）',
       default: existing.WEBHOOK_BASE_URL ?? '',
     })
-    console.log(`\n   Webhook URL：${webhookBaseUrl}/webhook`)
-    console.log('   請確認此 URL 已設定至 LINE Developer Console。\n')
-  }
-
-  platformValues = {
-    LINE_CHANNEL_SECRET: channelSecret || existing.LINE_CHANNEL_SECRET,
-    LINE_CHANNEL_ACCESS_TOKEN: channelToken || existing.LINE_CHANNEL_ACCESS_TOKEN,
-    ALLOWED_USER_ID: allowedUserId || existing.ALLOWED_USER_ID,
-    PORT: port,
-    ...(tunnelName ? { CLOUDFLARED_TUNNEL: tunnelName } : {}),
-    ...(webhookBaseUrl ? { WEBHOOK_BASE_URL: webhookBaseUrl } : {}),
+    if (tunnelName) platformValues.CLOUDFLARED_TUNNEL = tunnelName
+    if (webhookBaseUrl) {
+      platformValues.WEBHOOK_BASE_URL = webhookBaseUrl
+      console.log(`\n   Webhook URL：${webhookBaseUrl}/webhook`)
+      console.log('   請確認此 URL 已設定至 LINE Developer Console。\n')
+    }
   }
 }
 
-const claudeBin = await input({
-  message: 'CLAUDE_BIN',
-  default: existing.CLAUDE_BIN || '/usr/local/bin/claude',
-})
+// CLAUDE_BIN
+const claudeConfigured = isSet('CLAUDE_BIN')
+console.log(`\n  CLAUDE_BIN：${claudeConfigured ? existing.CLAUDE_BIN : '未設定'}`)
+const reconfigureClaude = claudeConfigured
+  ? await confirm({ message: '要重新設定 CLAUDE_BIN 嗎？', default: false })
+  : true
 
-const values = {
-  PLATFORM: platform,
-  ...platformValues,
-  CLAUDE_BIN: claudeBin,
-}
+const claudeBin = reconfigureClaude
+  ? await input({ message: 'CLAUDE_BIN', default: existing.CLAUDE_BIN || '/usr/local/bin/claude' })
+  : existing.CLAUDE_BIN || '/usr/local/bin/claude'
+
+// 寫入 .env（保留 existing，覆蓋新值）
+const values = { PLATFORM: platform, ...platformValues, CLAUDE_BIN: claudeBin }
+const finalValues = { ...existing, ...values }
 
 mkdirSync(CONFIG_DIR, { recursive: true })
-const finalValues = { ...existing, ...values }
-writeFileSync(
-  ENV_FILE,
-  Object.entries(finalValues).map(([k, v]) => `${k}=${v}`).join('\n') + '\n'
-)
-
+writeFileSync(ENV_FILE, Object.entries(finalValues).map(([k, v]) => `${k}=${v}`).join('\n') + '\n')
+chmodSync(ENV_FILE, 0o600)
 console.log(`\n✅ 設定完成，存至 ${ENV_FILE}`)
 
-// Install launchd service
-const LAUNCHD_LABEL = 'com.marsen.rai'
-const PLIST_DIR = join(homedir(), 'Library', 'LaunchAgents')
-const PLIST_PATH = join(PLIST_DIR, `${LAUNCHD_LABEL}.plist`)
+// 安裝 bot launchd service
 const TSX = join(PACKAGE_DIR, 'node_modules', '.bin', 'tsx')
 const BOT_TS = join(PACKAGE_DIR, 'src', 'presentation', 'bot.ts')
 const LOG_PATH = join(CONFIG_DIR, 'bot.log')
@@ -167,13 +187,13 @@ writeFileSync(PLIST_PATH, plist)
 
 try {
   execSync(`launchctl unload "${PLIST_PATH}" 2>/dev/null; launchctl load "${PLIST_PATH}"`)
-  console.log(`✅ 服務已安裝，開機自動啟動（${LAUNCHD_LABEL}）`)
+  console.log(`✅ Bot 服務已安裝並重啟（${LAUNCHD_LABEL}）`)
 } catch {
   console.log(`⚠️  服務安裝完成，但啟動失敗，請手動執行：`)
   console.log(`   launchctl load "${PLIST_PATH}"`)
 }
 
-// Install cloudflared launchd service（LINE only）
+// 安裝 cloudflared launchd service（LINE only）
 if (platform === 'line' && tunnelName && hasCloudflared) {
   const CLOUDFLARED_BIN = execSync('which cloudflared', { encoding: 'utf-8' }).trim()
   const CLOUDFLARED_LABEL = 'com.marsen.cloudflared'
