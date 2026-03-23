@@ -94,11 +94,14 @@ if (platform === 'telegram') {
     }
   }
 
-  const port = await input({
-    message: 'PORT（Webhook 監聽埠）',
-    default: existing.PORT ?? '57429',
-    validate: (v) => /^\d+$/.test(v) ? true : '請輸入數字',
-  })
+  const portConfigured = isSet('PORT')
+  console.log(`  PORT：${portConfigured ? existing.PORT : '未設定'}`)
+  const reconfigurePort = portConfigured
+    ? await confirm({ message: '要重新設定 PORT 嗎？', default: false })
+    : true
+  const port = reconfigurePort
+    ? await input({ message: 'PORT（Webhook 監聽埠）', default: existing.PORT ?? '57429', validate: (v) => /^\d+$/.test(v) ? true : '請輸入數字' })
+    : existing.PORT ?? '57429'
   platformValues.PORT = port
 
   // cloudflared tunnel
@@ -127,7 +130,7 @@ if (platform === 'telegram') {
 
 // CLAUDE_BIN
 const claudeConfigured = isSet('CLAUDE_BIN')
-console.log(`\n  CLAUDE_BIN：${claudeConfigured ? existing.CLAUDE_BIN : '未設定'}`)
+console.log(`\n  CLAUDE_BIN：${setStatus('CLAUDE_BIN')}`)
 const reconfigureClaude = claudeConfigured
   ? await confirm({ message: '要重新設定 CLAUDE_BIN 嗎？', default: false })
   : true
@@ -187,11 +190,27 @@ writeFileSync(PLIST_PATH, plist)
 
 try {
   execSync(`launchctl unload "${PLIST_PATH}" 2>/dev/null; launchctl load "${PLIST_PATH}"`)
-  console.log(`✅ Bot 服務已安裝並重啟（${LAUNCHD_LABEL}）`)
+  console.log(`✅ Bot 服務已安裝（${LAUNCHD_LABEL}）`)
 } catch {
   console.log(`⚠️  服務安裝完成，但啟動失敗，請手動執行：`)
   console.log(`   launchctl load "${PLIST_PATH}"`)
 }
+
+// 確認 bot 啟動
+const SOCKET_PATH = join(CONFIG_DIR, 'bot.sock')
+const CLIENT = join(PACKAGE_DIR, 'bin', 'client.mjs')
+process.stdout.write('⏳ 等待 Bot 啟動')
+let botReady = false
+for (let i = 0; i < 20; i++) {
+  await new Promise(r => setTimeout(r, 1000))
+  process.stdout.write('.')
+  try {
+    execSync(`node "${CLIENT}" status`, { stdio: 'ignore' })
+    botReady = true
+    break
+  } catch {}
+}
+console.log(botReady ? '\n✅ Bot 已上線' : '\n⚠️  Bot 未回應，請執行 rai status 確認')
 
 // 安裝 cloudflared launchd service（LINE only）
 if (platform === 'line' && tunnelName && hasCloudflared) {
