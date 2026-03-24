@@ -1,0 +1,13 @@
+branch=$(git branch --show-current)
+
+# main 直接放行
+if [ "$branch" = "main" ]; then
+  exit 0
+fi
+
+# 其他分支檢查命名規範
+if ! echo "$branch" | grep -qE "^(feat|fix|refactor|docs|chore)/"; then
+  echo "❌ 分支名稱不符合規範：$branch"
+  echo "請先 rename：git branch -m $branch feat/$branch"
+  exit 1
+fi
