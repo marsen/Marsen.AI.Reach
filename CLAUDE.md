@@ -29,7 +29,7 @@ Tech: Node.js + TypeScript (ESM) + @line/bot-sdk + grammY + @inquirer/prompts
 - [x] rai init 互動式精靈（@inquirer/prompts，平台選擇、已設定檢查）
 - [x] cloudflared tunnel 整合至 rai init（launchd service）
 - [x] rai 選單支援 gum choose（無 gum 自動 fallback）
-- [ ] Ghostty 捲動問題
+- [x] Ghostty 捲動問題（tmux copy mode：Ctrl+B [）
 
 ## 架構文件
 
