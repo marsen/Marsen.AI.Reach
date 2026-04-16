@@ -4,11 +4,13 @@ import type { StopSessionUseCase } from '../../application/use-cases/StopSession
 import type { SendMessageUseCase } from '../../application/use-cases/SendMessageUseCase.js'
 import type { Session } from '../../domain/entities/Session.js'
 import type { SessionLogger } from '../../infrastructure/logger/SessionLogger.js'
+import type { ClaudePort } from '../../domain/ports/ClaudePort.js'
 
 export interface AdapterDeps {
   startSession: StartSessionUseCase
   stopSession: StopSessionUseCase
   sendMessage: SendMessageUseCase
+  claude: ClaudePort
   session: Session
   getWorkDir: () => string
   getLogger: () => SessionLogger | null

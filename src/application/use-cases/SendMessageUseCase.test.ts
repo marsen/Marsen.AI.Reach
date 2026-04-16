@@ -7,6 +7,9 @@ const mockClaude = (): ClaudePort => ({
   ensure: vi.fn(),
   run: vi.fn(),
   reset: vi.fn(),
+  isRunning: vi.fn(),
+  startWatcher: vi.fn(),
+  stopWatcher: vi.fn(),
 })
 
 describe('SendMessageUseCase', () => {
@@ -31,7 +34,7 @@ describe('SendMessageUseCase', () => {
 
     const result = await uc.execute('hello')
 
-    expect(claude.run).toHaveBeenCalledWith('hello')
+    expect(claude.run).toHaveBeenCalledWith('hello', undefined)
     expect(result).toBe('Claude 的回應')
   })
 

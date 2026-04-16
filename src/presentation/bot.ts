@@ -40,6 +40,7 @@ const adapter = createAdapter({
   startSession,
   stopSession,
   sendMessage,
+  claude,
   session,
   getWorkDir: () => currentWorkDir,
   getLogger: () => logger,
