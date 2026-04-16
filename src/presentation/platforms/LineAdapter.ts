@@ -5,7 +5,12 @@ import { SessionLogger } from '../../infrastructure/logger/SessionLogger.js'
 import type { AdapterDeps, PlatformAdapter } from './types.js'
 
 export function createAdapter(deps: AdapterDeps): PlatformAdapter {
-  const { startSession, stopSession, sendMessage, session, getWorkDir, getLogger, setLogger, ensureLogger, log } = deps
+  const { startSession, stopSession, sendMessage, claude, session, getWorkDir, getLogger, setLogger, ensureLogger, log } = deps
+
+  claude.startWatcher((content) => {
+    log(`[bot] background task completed, pushing notification`)
+    push(`📬 背景任務完成：\n${content.slice(0, 4000)}`).catch(() => {})
+  })
 
   const lineClient = new Client({
     channelSecret: LINE_CHANNEL_SECRET,
@@ -75,7 +80,11 @@ export function createAdapter(deps: AdapterDeps): PlatformAdapter {
 
           try {
             getLogger()?.write('User', text)
-            const response = await sendMessage.execute(text)
+            const onProgress = (elapsed: number) => {
+              const sec = Math.round(elapsed / 1000)
+              push(`⏳ 還在思考中（${sec} 秒）...`).catch(() => {})
+            }
+            const response = await sendMessage.execute(text, onProgress)
             getLogger()?.write('Claude', response)
             log(`[bot] reply length: ${response.length} preview: ${response.slice(0, 80)}`)
 

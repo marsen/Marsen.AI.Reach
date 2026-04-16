@@ -7,6 +7,9 @@ const mockClaude = (): ClaudePort => ({
   ensure: vi.fn(),
   run: vi.fn(),
   reset: vi.fn(),
+  isRunning: vi.fn(),
+  startWatcher: vi.fn(),
+  stopWatcher: vi.fn(),
 })
 
 describe('StartSessionUseCase', () => {

@@ -5,8 +5,15 @@ import { CLAUDE_BIN } from '../config/env.js'
 
 const SESSION = 'claude-reach'
 const PROMPT_RE = /❯\s*\r?\n[-─]+/
-const STABLE_POLLS = 3   // 連續 N 次沒變化才算穩定
+const STABLE_POLLS = 3       // 連續 N 次沒變化才算穩定
 const POLL_INTERVAL = 800
+const DEFAULT_TIMEOUT = 300000  // 5 分鐘
+const PROGRESS_INTERVAL = 30000 // 每 30 秒推一次進度
+const WATCHER_INTERVAL = 3000   // 背景 watcher 每 3 秒檢查一次
+
+let isProcessing = false
+let lastPaneSnapshot = ''
+let watcherTimer: NodeJS.Timeout | null = null
 
 function tmux(args: string): string {
   return execSync(`tmux ${args}`, { encoding: 'utf-8' })
@@ -59,12 +66,22 @@ function hasPrompt(output: string): boolean {
 }
 
 // 等 pane 內容穩定（連續 N 次不變）且 prompt 出現
-async function waitForStablePrompt(timeout = 120000): Promise<void> {
+async function waitForStablePrompt(
+  timeout = DEFAULT_TIMEOUT,
+  onProgress?: (elapsed: number) => void,
+): Promise<void> {
   const start = Date.now()
   let lastOutput = ''
   let stableCount = 0
+  let lastProgressAt = 0
 
   while (Date.now() - start < timeout) {
+    const elapsed = Date.now() - start
+    if (onProgress && elapsed - lastProgressAt >= PROGRESS_INTERVAL) {
+      lastProgressAt = elapsed
+      onProgress(elapsed)
+    }
+
     const current = cleanAnsi(capturePane())
 
     if (current === lastOutput && hasPrompt(current)) {
@@ -117,8 +134,8 @@ function extractResponse(pane: string): string {
 }
 
 export class TmuxClaudeAdapter implements ClaudePort {
-  async run(message: string): Promise<string> {
-    return runClaude(message)
+  async run(message: string, onProgress?: (elapsed: number) => void): Promise<string> {
+    return runClaude(message, onProgress)
   }
 
   async ensure(workDir: string): Promise<'new' | 'resumed'> {
@@ -133,24 +150,50 @@ export class TmuxClaudeAdapter implements ClaudePort {
   isRunning(): boolean {
     return sessionExists() && isClaudeRunning()
   }
+
+  startWatcher(onNewContent: (content: string) => void): void {
+    if (watcherTimer) return
+    watcherTimer = setInterval(() => {
+      if (isProcessing || !sessionExists()) return
+      const current = cleanAnsi(capturePane())
+      if (current !== lastPaneSnapshot && hasPrompt(current)) {
+        const response = extractResponse(current)
+        if (response) onNewContent(response)
+        lastPaneSnapshot = current
+      }
+    }, WATCHER_INTERVAL)
+  }
+
+  stopWatcher(): void {
+    if (watcherTimer) {
+      clearInterval(watcherTimer)
+      watcherTimer = null
+    }
+  }
 }
 
-async function runClaude(message: string): Promise<string> {
-  await ensureSession(lastWorkDir)
+async function runClaude(message: string, onProgress?: (elapsed: number) => void): Promise<string> {
+  isProcessing = true
+  try {
+    await ensureSession(lastWorkDir)
 
-  // 用 tmux buffer 傳訊息，避免特殊字元問題
-  const tmpFile = '/tmp/claude-reach-msg.txt'
-  writeFileSync(tmpFile, message)
-  tmux(`load-buffer ${tmpFile}`)
-  tmux(`paste-buffer -t ${SESSION}`)
-  tmux(`send-keys -t ${SESSION} Enter`)
+    // 用 tmux buffer 傳訊息，避免特殊字元問題
+    const tmpFile = '/tmp/claude-reach-msg.txt'
+    writeFileSync(tmpFile, message)
+    tmux(`load-buffer ${tmpFile}`)
+    tmux(`paste-buffer -t ${SESSION}`)
+    tmux(`send-keys -t ${SESSION} Enter`)
 
-  console.log('[claude] message sent, waiting for stable response...')
+    console.log('[claude] message sent, waiting for stable response...')
 
-  await waitForStablePrompt(120000)
+    await waitForStablePrompt(DEFAULT_TIMEOUT, onProgress)
 
-  const pane = capturePane()
-  const response = extractResponse(pane)
-  console.log('[claude] response length:', response.length, 'preview:', response.slice(0, 80))
-  return response
+    const pane = capturePane()
+    const response = extractResponse(pane)
+    lastPaneSnapshot = cleanAnsi(pane)
+    console.log('[claude] response length:', response.length, 'preview:', response.slice(0, 80))
+    return response
+  } finally {
+    isProcessing = false
+  }
 }
