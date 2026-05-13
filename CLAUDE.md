@@ -31,6 +31,11 @@ Tech: Node.js + TypeScript (ESM) + @line/bot-sdk + grammY + @inquirer/prompts
 - [x] rai 選單支援 gum choose（無 gum 自動 fallback）
 - [x] Ghostty 捲動問題（tmux copy mode：Ctrl+B [）
 
+## 進行中
+
+Issue #166 架構重構：https://github.com/marsen/Marsen.Backlog/issues/166
+- PR #14 feat/telegram-parity：Telegram 進度通知 + watcher 統一管理，待 review/merge
+
 ## 架構文件
 
 - [架構設計](docs/architecture/architecture.md)
