@@ -195,6 +195,7 @@ async function runClaude(message: string, onProgress?: (elapsed: number) => void
     const pane = capturePane()
     const response = extractResponse(pane)
     lastPaneSnapshot = cleanAnsi(pane)
+    lastNotifiedResponse = response  // prevent watcher from re-sending this response
     console.log('[claude] response length:', response.length, 'preview:', response.slice(0, 80))
     return response
   } finally {
