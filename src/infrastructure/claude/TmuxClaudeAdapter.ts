@@ -13,6 +13,7 @@ const WATCHER_INTERVAL = 3000   // 背景 watcher 每 3 秒檢查一次
 
 let isProcessing = false
 let lastPaneSnapshot = ''
+let lastNotifiedResponse = ''
 let watcherTimer: NodeJS.Timeout | null = null
 
 function tmux(args: string): string {
@@ -158,7 +159,10 @@ export class TmuxClaudeAdapter implements ClaudePort {
       const current = cleanAnsi(capturePane())
       if (current !== lastPaneSnapshot && hasPrompt(current)) {
         const response = extractResponse(current)
-        if (response) onNewContent(response)
+        if (response && response !== lastNotifiedResponse) {
+          lastNotifiedResponse = response
+          onNewContent(response)
+        }
         lastPaneSnapshot = current
       }
     }, WATCHER_INTERVAL)

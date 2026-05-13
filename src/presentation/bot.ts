@@ -51,6 +51,11 @@ const adapter = createAdapter({
 
 log(`[bot] platform: ${platform}`)
 
+claude.startWatcher((content) => {
+  log('[bot] background task completed, pushing notification')
+  adapter.push(`📬 背景任務完成：\n${content.slice(0, 4000)}`).catch(() => {})
+})
+
 // Express
 const app = express()
 app.use(adapter.router)

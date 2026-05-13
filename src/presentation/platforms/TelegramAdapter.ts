@@ -66,7 +66,11 @@ export function createAdapter(deps: AdapterDeps): PlatformAdapter {
     try {
       const userMsg = ctx.message.text
       getLogger()?.write('User', userMsg)
-      const response = await sendMessage.execute(userMsg)
+      const onProgress = (elapsed: number) => {
+        const sec = Math.round(elapsed / 1000)
+        push(`⏳ 還在思考中（${sec} 秒）...`).catch(() => {})
+      }
+      const response = await sendMessage.execute(userMsg, onProgress)
       getLogger()?.write('Claude', response)
       log(`[bot] reply length: ${response.length} preview: ${response.slice(0, 80)}`)
 
