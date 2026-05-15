@@ -14,6 +14,12 @@ export class ClaudeRunner implements CLIRunner {
   ) {}
 
   async start(workDir: string): Promise<void> {
+    if (this.sessionExists() && this.isClaudeRunning()) return       // resumed
+    if (this.sessionExists()) this.tmux(`kill-session -t ${ClaudeRunner.SESSION}`)
+    await this.createSession(workDir)
+  }
+
+  private async createSession(workDir: string): Promise<void> {
     this.tmux(`new-session -d -s ${ClaudeRunner.SESSION} -x 220 -y 50`)
     const cmd = `cd ${workDir} && ${this.claudeBin} --dangerously-skip-permissions; kill -USR1 ${this.botPid} 2>/dev/null; tmux kill-session -t ${ClaudeRunner.SESSION}`
     this.tmux(`send-keys -t ${ClaudeRunner.SESSION} "${cmd}" Enter`)
@@ -26,6 +32,24 @@ export class ClaudeRunner implements CLIRunner {
 
   private capturePane(): string {
     return this.tmux(`capture-pane -t ${ClaudeRunner.SESSION} -p -S -1000`)
+  }
+
+  private sessionExists(): boolean {
+    try {
+      execSync(`tmux has-session -t ${ClaudeRunner.SESSION}`, { stdio: ['ignore', 'pipe', 'ignore'] })
+      return true
+    } catch {
+      return false
+    }
+  }
+
+  private isClaudeRunning(): boolean {
+    try {
+      execSync(`pgrep -f "${this.claudeBin}"`, { encoding: 'utf-8' })
+      return true
+    } catch {
+      return false
+    }
   }
 
   private async waitForStablePrompt(timeout: number): Promise<void> {
