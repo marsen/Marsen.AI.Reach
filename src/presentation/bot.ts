@@ -51,6 +51,12 @@ const adapter = createAdapter({
 
 log(`[bot] platform: ${platform}`)
 
+const watcher = claude.createWatcher()
+watcher.start((content) => {
+  log('[bot] background task completed, pushing notification')
+  adapter.push(`📬 背景任務完成：\n${content.slice(0, 4000)}`).catch(() => {})
+})
+
 // Express
 const app = express()
 app.use(adapter.router)
@@ -106,6 +112,7 @@ socketServer.listen(SOCKET_PATH, () => {
 
 // Signal handlers
 process.once('SIGINT', async () => {
+  watcher.stop()
   cleanupSocket()
   await adapter.push('🔴 Bot 已離線')
   process.exit(0)
@@ -118,6 +125,7 @@ process.on('SIGUSR1', async () => {
 })
 
 process.once('SIGTERM', async () => {
+  watcher.stop()
   cleanupSocket()
   await adapter.push('🔴 Bot 已離線')
   process.exit(0)

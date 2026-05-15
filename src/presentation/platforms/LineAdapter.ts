@@ -5,12 +5,7 @@ import { SessionLogger } from '../../infrastructure/logger/SessionLogger.js'
 import type { AdapterDeps, PlatformAdapter } from './types.js'
 
 export function createAdapter(deps: AdapterDeps): PlatformAdapter {
-  const { startSession, stopSession, sendMessage, claude, session, getWorkDir, getLogger, setLogger, ensureLogger, log } = deps
-
-  claude.startWatcher((content) => {
-    log(`[bot] background task completed, pushing notification`)
-    push(`📬 背景任務完成：\n${content.slice(0, 4000)}`).catch(() => {})
-  })
+  const { startSession, stopSession, sendMessage, session, getWorkDir, getLogger, setLogger, ensureLogger, log } = deps
 
   const lineClient = new Client({
     channelSecret: LINE_CHANNEL_SECRET,
