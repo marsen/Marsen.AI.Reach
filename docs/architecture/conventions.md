@@ -1,5 +1,15 @@
 # 開發慣例
 
+## 程式碼原則
+
+### 禁止 `process.env.X ?? 'default'`
+
+預設值會讓「環境變數忘了設」的 bug 靜默通過，違反 fail-loud 原則。
+
+- 值固定 → 寫死常數 + 註解（例：`const CLAUDE_BIN = 'claude' // TODO: 抽環境變數`）
+- 值需從環境取 → `const x = process.env.X` 後**顯式檢查**：`if (!x) throw new Error('X not set')`
+- 還沒決定來源 → 先寫死，等需要再改
+
 ## Git 工作流程
 
 ### 分支命名

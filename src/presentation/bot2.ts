@@ -2,15 +2,10 @@
  * bot2.ts — 程式進入點（主服務）
  * 只聚焦：「建立 tmux session 並啟動 Claude」這個故事
  *
- * 不認識任何 adapter，所有具體實作都來自 composition root。
+ * 只依賴 port 介面（透過 composition root 取得 instance），不認識任何 adapter。
  */
 
-import { buildRunner } from '../composition.js'
+import { cliRunner } from '../composition.js'
 
-async function main() {
-  const runner = buildRunner()
-  await runner.start(process.cwd())
-  // 到這裡：CLI 已就緒
-}
-
-main()
+await cliRunner.start(process.cwd())
+// 到這裡：CLI 已就緒
