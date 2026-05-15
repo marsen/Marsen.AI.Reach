@@ -52,10 +52,17 @@ const adapter = createAdapter({
 log(`[bot] platform: ${platform}`)
 
 const watcher = claude.createWatcher()
-watcher.start((content) => {
-  log('[bot] background task completed, pushing notification')
-  adapter.push(`📬 背景任務完成：\n${content.slice(0, 4000)}`).catch(() => {})
-})
+
+function startWatcher() {
+  watcher.start((content) => {
+    log('[bot] background task completed, pushing notification')
+    adapter.push(`📬 背景任務完成：\n${content.slice(0, 4000)}`).catch(() => {})
+  })
+}
+
+function stopWatcher() {
+  watcher.stop()
+}
 
 // Express
 const app = express()
@@ -80,12 +87,18 @@ const socketServer = createServer((socket) => {
       const cmd = line.trim()
       if (!cmd) continue
       if (cmd === 'info') {
-        if (session.isActive() && !claude.isRunning()) session.stop()
+        if (session.isActive() && !claude.isRunning()) {
+          session.stop()
+          stopWatcher()
+        }
         const info = JSON.stringify({ session: session.isActive() ? 'active' : 'inactive', workDir: currentWorkDir })
         socket.write(info + '\n')
         socket.end()
       } else if (cmd === 'status') {
-        if (session.isActive() && !claude.isRunning()) session.stop()
+        if (session.isActive() && !claude.isRunning()) {
+          session.stop()
+          stopWatcher()
+        }
         socket.write(session.isActive() ? 'active\n' : 'inactive\n')
         socket.end()
       } else if (cmd.startsWith('start')) {
@@ -93,6 +106,7 @@ const socketServer = createServer((socket) => {
         currentWorkDir = workDir
         startSession.execute(workDir).then(result => {
           ensureLogger(workDir)
+          startWatcher()
           socket.write(`ready:${result}\n`)
           socket.end()
           log(`[bot] socket start: ${result} workDir: ${workDir}`)
@@ -120,6 +134,7 @@ process.once('SIGINT', async () => {
 
 process.on('SIGUSR1', async () => {
   stopSession.execute()
+  stopWatcher()
   await adapter.push('💤 Claude session 已結束')
   log('[bot] Claude exited, session stopped')
 })
