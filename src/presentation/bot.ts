@@ -110,6 +110,7 @@ const socketServer = createServer((socket) => {
           socket.write(`ready:${result}\n`)
           socket.end()
           log(`[bot] socket start: ${result} workDir: ${workDir}`)
+          adapter.push(`🟢 Claude session 已就緒（${result === 'new' ? '新建' : '恢復'}）`).catch(() => {})
         }).catch(err => {
           socket.write(`error:${(err as Error).message}\n`)
           socket.end()
@@ -167,8 +168,10 @@ process.on('unhandledRejection', (reason) => {
 if (adapter.httpPort !== null) {
   app.listen(adapter.httpPort, () => {
     log(`[bot] webhook listening on port ${adapter.httpPort}`)
-    adapter.push('✅ Bot 已上線，可以開始對話').catch(() => {})
   })
 }
+
+// 所有平台：bot 上線通知
+adapter.push('✅ Bot 已上線，可以開始對話').catch(() => {})
 
 log('🤖 Marsen.AI.Reach 啟動中...')
