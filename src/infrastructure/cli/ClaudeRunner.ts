@@ -14,9 +14,12 @@ export class ClaudeRunner implements CLIRunner {
   ) {}
 
   async start(workDir: string): Promise<void> {
-    if (this.sessionExists() && this.isClaudeRunning()) return       // resumed
     if (this.sessionExists()) this.tmux(`kill-session -t ${ClaudeRunner.SESSION}`)
     await this.createSession(workDir)
+  }
+
+  isAlive(): boolean {
+    return this.sessionExists() && this.isClaudeRunning()
   }
 
   private async createSession(workDir: string): Promise<void> {
