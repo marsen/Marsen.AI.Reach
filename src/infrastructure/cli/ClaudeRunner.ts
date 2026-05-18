@@ -24,7 +24,9 @@ export class ClaudeRunner implements CLIRunner {
 
   private async createSession(workDir: string): Promise<void> {
     this.tmux(`new-session -d -s ${ClaudeRunner.SESSION} -x 220 -y 50`)
-    const cmd = `cd ${workDir} && ${this.claudeBin} --dangerously-skip-permissions; kill -USR1 ${this.botPid} 2>/dev/null; tmux kill-session -t ${ClaudeRunner.SESSION}`
+    // 對 workDir 做 shell single-quote escape，避免特殊字元被誤解析
+    const safeDir = `'${workDir.replace(/'/g, `'\\''`)}'`
+    const cmd = `cd ${safeDir} && ${this.claudeBin} --dangerously-skip-permissions; kill -USR1 ${this.botPid} 2>/dev/null; tmux kill-session -t ${ClaudeRunner.SESSION}`
     this.tmux(`send-keys -t ${ClaudeRunner.SESSION} "${cmd}" Enter`)
     await this.waitForStablePrompt(ClaudeRunner.STARTUP_TIMEOUT)
   }

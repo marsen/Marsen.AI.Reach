@@ -5,10 +5,13 @@ import type { CLIRunner } from './ports/CLIRunner.js'
 /**
  * Bot daemon —— 接 Unix socket、分派命令給內部邏輯。
  *
- * dispatch 內目前僅占位（echo），info / start 命令邏輯待之後從 bot.ts 抄入。
+ * 支援命令：
+ *   info             → 回 JSON: { workDir, sessionAlive }
+ *   start:<workDir>  → 一律新建 session（kill 舊建新），回 ok / error:<msg>
  */
 export class Daemon {
   private server: Server | null = null
+  private workDir: string | null = null
 
   constructor(
     private readonly socketPath: string,
@@ -18,6 +21,7 @@ export class Daemon {
   start(): void {
     try { unlinkSync(this.socketPath) } catch {}
     this.server = createServer((conn) => {
+      conn.on('error', () => {})   // client 中途斷線時避免 unhandled error
       conn.on('data', (data) => this.dispatch(data.toString().trim(), conn))
     })
     this.server.listen(this.socketPath)
@@ -30,9 +34,20 @@ export class Daemon {
   }
 
   private dispatch(cmd: string, conn: Socket): void {
-    // TODO: 命令判讀（info / start）之後從 bot.ts 抄入
-    // 暫時 echo 收到的命令；cliRunner 預留待之後使用
-    void this.cliRunner
-    conn.end(`echo:${cmd}\n`)
+    if (cmd === 'info') {
+      conn.end(JSON.stringify({
+        workDir: this.workDir,
+        sessionAlive: this.cliRunner.isAlive(),
+      }) + '\n')
+      return
+    }
+    if (cmd.startsWith('start:')) {
+      const dir = cmd.slice('start:'.length)
+      this.cliRunner.start(dir)
+        .then(() => { this.workDir = dir; conn.end('ok\n') })
+        .catch((e: Error) => conn.end(`error:${e.message}\n`))
+      return
+    }
+    conn.end(`error:unknown command: ${cmd}\n`)
   }
 }
