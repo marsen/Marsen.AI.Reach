@@ -4,10 +4,10 @@
  * 由 bot2 spawn 為 detached 子進程，常駐 listen socket。
  * 不是給使用者直接跑的。
  */
-import { cliRunner, SOCKET_PATH } from '../composition.js'
+import { cliRunner } from '../composition.js'
 import { Daemon } from '../application/Daemon.js'
 
-const daemon = new Daemon(SOCKET_PATH, cliRunner)
+const daemon = new Daemon(cliRunner)
 
 daemon.start()
 console.log('[daemon] listening')

@@ -4,14 +4,15 @@
  */
 import { createConnection } from 'net'
 import { text } from 'stream/consumers'
+import { SOCKET_PATH } from '../../config.js'
 import type { BotConnection } from '../../application/ports/BotConnection.js'
 
 export class UnixSocketBotConnection implements BotConnection {
-  constructor(private readonly socketPath: string) {}
+  constructor() {}
 
   isAlive(): Promise<boolean> {
     return new Promise((resolve) => {
-      const conn = createConnection(this.socketPath)
+      const conn = createConnection(SOCKET_PATH)
       conn.once('connect', () => { conn.end(); resolve(true) })
       conn.once('error', () => resolve(false))
     })
@@ -27,7 +28,7 @@ export class UnixSocketBotConnection implements BotConnection {
   }
 
   private async send(cmd: string): Promise<string> {
-    const conn = createConnection(this.socketPath)
+    const conn = createConnection(SOCKET_PATH)
     conn.write(cmd + '\n')
     // text() 把整條 socket stream 收成字串；daemon 寫完回應 conn.end() 後才 resolve
     return (await text(conn)).trim()
