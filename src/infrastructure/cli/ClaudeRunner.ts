@@ -3,7 +3,6 @@ import { CLIRunner } from '../../application/ports/CLIRunner.js'
 import { cleanAnsi, hasPrompt } from '../claude/claudeParser.js'
 
 export class ClaudeRunner implements CLIRunner {
-  private static readonly SESSION = 'claude-reach'
   private static readonly POLL_INTERVAL = 800
   private static readonly STABLE_POLLS = 3
   private static readonly STARTUP_TIMEOUT = 60_000
@@ -11,10 +10,11 @@ export class ClaudeRunner implements CLIRunner {
   constructor(
     private readonly claudeBin: string,
     private readonly botPid: number,
+    private readonly sessionName: string,
   ) {}
 
   async start(workDir: string): Promise<void> {
-    if (this.sessionExists()) this.tmux(`kill-session -t ${ClaudeRunner.SESSION}`)
+    if (this.sessionExists()) this.tmux(`kill-session -t ${this.sessionName}`)
     await this.createSession(workDir)
   }
 
@@ -23,11 +23,11 @@ export class ClaudeRunner implements CLIRunner {
   }
 
   private async createSession(workDir: string): Promise<void> {
-    this.tmux(`new-session -d -s ${ClaudeRunner.SESSION} -x 220 -y 50`)
+    this.tmux(`new-session -d -s ${this.sessionName} -x 220 -y 50`)
     // 對 workDir 做 shell single-quote escape，避免特殊字元被誤解析
     const safeDir = `'${workDir.replace(/'/g, `'\\''`)}'`
-    const cmd = `cd ${safeDir} && ${this.claudeBin} --dangerously-skip-permissions; kill -USR1 ${this.botPid} 2>/dev/null; tmux kill-session -t ${ClaudeRunner.SESSION}`
-    this.tmux(`send-keys -t ${ClaudeRunner.SESSION} "${cmd}" Enter`)
+    const cmd = `cd ${safeDir} && ${this.claudeBin} --dangerously-skip-permissions; kill -USR1 ${this.botPid} 2>/dev/null; tmux kill-session -t ${this.sessionName}`
+    this.tmux(`send-keys -t ${this.sessionName} "${cmd}" Enter`)
     await this.waitForStablePrompt(ClaudeRunner.STARTUP_TIMEOUT)
   }
 
@@ -36,12 +36,12 @@ export class ClaudeRunner implements CLIRunner {
   }
 
   private capturePane(): string {
-    return this.tmux(`capture-pane -t ${ClaudeRunner.SESSION} -p -S -1000`)
+    return this.tmux(`capture-pane -t ${this.sessionName} -p -S -1000`)
   }
 
   private sessionExists(): boolean {
     try {
-      execSync(`tmux has-session -t ${ClaudeRunner.SESSION}`, { stdio: ['ignore', 'pipe', 'ignore'] })
+      execSync(`tmux has-session -t ${this.sessionName}`, { stdio: ['ignore', 'pipe', 'ignore'] })
       return true
     } catch {
       return false

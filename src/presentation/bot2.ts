@@ -4,13 +4,13 @@
  * 1. 檢查 daemon 在不在跑（試連 socket）
  * 2. 沒在跑就 detached spawn 一個 daemon-entry 進程
  * 3. 互動：顯示狀態 + 選舊/新/取消
- * 4. 送命令給 daemon、提示 tmux attach
+ * 4. 送命令給 daemon、自動接管 terminal 進入 tmux session
  */
 import { spawn } from 'child_process'
 import { fileURLToPath } from 'url'
 import { dirname, join } from 'path'
 import { select } from '@inquirer/prompts'
-import { botConnection } from '../composition.js'
+import { botConnection, TMUX_SESSION } from '../composition.js'
 
 async function isDaemonAlive(): Promise<boolean> {
   try { await botConnection.info(); return true }
@@ -33,6 +33,20 @@ async function spawnDaemon(): Promise<void> {
     await new Promise((r) => setTimeout(r, 100))
   }
   throw new Error('Daemon 啟動逾時')
+}
+
+function attachTmux(): void {
+  // 已在 tmux 內用 switch-client（避免 nested session），否則 attach
+  const args = process.env.TMUX
+    ? ['switch-client', '-t', TMUX_SESSION]
+    : ['attach', '-t', TMUX_SESSION]
+
+  const tmux = spawn('tmux', args, { stdio: 'inherit' })
+  tmux.on('error', (e) => {
+    console.error(`❌ 無法啟動 tmux：${e.message}`)
+    process.exit(1)
+  })
+  tmux.on('exit', (code) => process.exit(code ?? 0))
 }
 
 if (!(await isDaemonAlive())) {
@@ -64,7 +78,7 @@ try {
     console.log('✅ session 就緒')
   }
 
-  console.log('執行：tmux attach -t claude-reach')
+  attachTmux()
 } catch (e) {
   if (e instanceof Error && e.name === 'ExitPromptError') process.exit(0)
   console.error(`❌ ${(e as Error).message}`)

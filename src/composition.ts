@@ -13,6 +13,7 @@ import { UnixSocketBotConnection } from './infrastructure/control/UnixSocketBotC
 // TODO: 未來抽換成環境變數或設定檔；先寫死避免預設值掩蓋未設定錯誤
 const CLAUDE_BIN = 'claude'
 export const SOCKET_PATH = join(homedir(), '.rai', 'bot2.sock')
+export const TMUX_SESSION = 'claude-reach'
 
-export const cliRunner: CLIRunner = new ClaudeRunner(CLAUDE_BIN, process.pid)
+export const cliRunner: CLIRunner = new ClaudeRunner(CLAUDE_BIN, process.pid, TMUX_SESSION)
 export const botConnection: BotConnection = new UnixSocketBotConnection(SOCKET_PATH)
