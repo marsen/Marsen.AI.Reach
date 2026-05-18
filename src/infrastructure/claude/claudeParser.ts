@@ -1,4 +1,4 @@
-export const PROMPT_RE = /❯\s*\r?\n[-─]+/
+export const PROMPT_RE = /❯[^\n]*\r?\n[-─]+/
 
 export function cleanAnsi(s: string): string {
   return s.replace(/\x1B\[[0-9;]*[a-zA-Z]/g, '')
