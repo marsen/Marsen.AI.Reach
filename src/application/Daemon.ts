@@ -1,5 +1,5 @@
 import { createServer, type Server, type Socket } from 'net'
-import { unlinkSync } from 'fs'
+import { rmSync } from 'fs'
 import type { CLIRunner } from './ports/CLIRunner.js'
 
 /**
@@ -19,7 +19,7 @@ export class Daemon {
   ) {}
 
   start(): void {
-    try { unlinkSync(this.socketPath) } catch {}
+    rmSync(this.socketPath, { force: true })
     this.server = createServer((conn) => {
       conn.on('error', () => {})   // client 中途斷線時避免 unhandled error
       conn.on('data', (data) => this.dispatch(data.toString().trim(), conn))
@@ -30,7 +30,7 @@ export class Daemon {
   close(): void {
     this.server?.close()
     this.server = null
-    try { unlinkSync(this.socketPath) } catch {}
+    rmSync(this.socketPath, { force: true })
   }
 
   private dispatch(cmd: string, conn: Socket): void {
@@ -45,7 +45,7 @@ export class Daemon {
       const dir = cmd.slice('start:'.length)
       this.cliRunner.start(dir)
         .then(() => { this.workDir = dir; conn.end('ok\n') })
-        .catch((e: Error) => conn.end(`error:${e.message}\n`))
+        .catch((e: unknown) => conn.end(`error:${e instanceof Error ? e.message : String(e)}\n`))
       return
     }
     conn.end(`error:unknown command: ${cmd}\n`)
