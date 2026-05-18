@@ -2,3 +2,4 @@ node_modules/
 dist/
 .env
 queue/
+src/.DS_Store
