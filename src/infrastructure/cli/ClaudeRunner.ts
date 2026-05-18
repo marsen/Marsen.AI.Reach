@@ -22,7 +22,10 @@ export class ClaudeRunner implements CLIRunner {
     this.tmux(`new-session -d -s ${TMUX_SESSION} -x 220 -y 50`)
     // 對 workDir 做 shell single-quote escape，避免特殊字元被誤解析
     const safeDir = `'${workDir.replace(/'/g, `'\\''`)}'`
-    const cmd = `cd ${safeDir} && ${CLAUDE_BIN} --dangerously-skip-permissions; tmux kill-session -t ${TMUX_SESSION}`
+    const launchClaude = `${CLAUDE_BIN} --dangerously-skip-permissions`
+    const cleanupSession = `tmux kill-session -t ${TMUX_SESSION}`
+    // cd 失敗 → 整段中止（&&）；Claude 退出（無論成敗）→ 必跑 cleanup（;）
+    const cmd = `cd ${safeDir} && ${launchClaude}; ${cleanupSession}`
     this.tmux(`send-keys -t ${TMUX_SESSION} "${cmd}" Enter`)
     await this.waitForStablePrompt()
   }
