@@ -3,10 +3,19 @@
  * 每次呼叫開一條連線、送一行命令、收回應、關閉。
  */
 import { createConnection } from 'net'
+import { text } from 'stream/consumers'
 import type { BotConnection } from '../../application/ports/BotConnection.js'
 
 export class UnixSocketBotConnection implements BotConnection {
   constructor(private readonly socketPath: string) {}
+
+  isAlive(): Promise<boolean> {
+    return new Promise((resolve) => {
+      const conn = createConnection(this.socketPath)
+      conn.once('connect', () => { conn.end(); resolve(true) })
+      conn.once('error', () => resolve(false))
+    })
+  }
 
   async info(): Promise<{ workDir: string | null; sessionAlive: boolean }> {
     return JSON.parse(await this.send('info'))
@@ -17,14 +26,10 @@ export class UnixSocketBotConnection implements BotConnection {
     if (r.startsWith('error:')) throw new Error(r.slice('error:'.length))
   }
 
-  private send(cmd: string): Promise<string> {
-    return new Promise((resolve, reject) => {
-      const conn = createConnection(this.socketPath)
-      let buf = ''
-      conn.on('connect', () => conn.write(cmd + '\n'))
-      conn.on('data', (data) => { buf += data.toString() })
-      conn.on('end', () => resolve(buf.trim()))
-      conn.on('error', reject)
-    })
+  private async send(cmd: string): Promise<string> {
+    const conn = createConnection(this.socketPath)
+    conn.write(cmd + '\n')
+    // text() 把整條 socket stream 收成字串；daemon 寫完回應 conn.end() 後才 resolve
+    return (await text(conn)).trim()
   }
 }
