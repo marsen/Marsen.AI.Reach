@@ -1,4 +1,5 @@
-import { execSync } from 'child_process'
+import { execSync, spawnSync } from 'child_process'
+import { setTimeout as sleep } from 'timers/promises'
 import { CLIRunner } from '../../application/ports/CLIRunner.js'
 import { cleanAnsi, hasPrompt } from '../claude/claudeParser.js'
 import { CLAUDE_BIN, TMUX_SESSION } from '../../config.js'
@@ -23,7 +24,7 @@ export class ClaudeRunner implements CLIRunner {
     const safeDir = `'${workDir.replace(/'/g, `'\\''`)}'`
     const cmd = `cd ${safeDir} && ${CLAUDE_BIN} --dangerously-skip-permissions; tmux kill-session -t ${TMUX_SESSION}`
     this.tmux(`send-keys -t ${TMUX_SESSION} "${cmd}" Enter`)
-    await this.waitForStablePrompt(ClaudeRunner.STARTUP_TIMEOUT)
+    await this.waitForStablePrompt()
   }
 
   private tmux(args: string): string {
@@ -35,29 +36,21 @@ export class ClaudeRunner implements CLIRunner {
   }
 
   private sessionExists(): boolean {
-    try {
-      execSync(`tmux has-session -t ${TMUX_SESSION}`, { stdio: ['ignore', 'pipe', 'ignore'] })
-      return true
-    } catch {
-      return false
-    }
+    return spawnSync('tmux', ['has-session', '-t', TMUX_SESSION], { stdio: 'pipe' }).status === 0
   }
 
   private isClaudeRunning(): boolean {
-    try {
-      execSync(`pgrep -f "${CLAUDE_BIN}"`, { encoding: 'utf-8' })
-      return true
-    } catch {
-      return false
-    }
+    // 用啟動旗標當 pattern，避免單純 'claude' 字串誤判（vim claude.md 之類）
+    const pattern = `${CLAUDE_BIN} --dangerously-skip-permissions`
+    return spawnSync('pgrep', ['-f', pattern], { stdio: 'pipe' }).status === 0
   }
 
-  private async waitForStablePrompt(timeout: number): Promise<void> {
+  private async waitForStablePrompt(): Promise<void> {
     const begin = Date.now()
     let last = ''
     let stable = 0
 
-    while (Date.now() - begin < timeout) {
+    while (Date.now() - begin < ClaudeRunner.STARTUP_TIMEOUT) {
       const current = cleanAnsi(this.capturePane())
       if (current === last && hasPrompt(current)) {
         stable++
@@ -66,7 +59,7 @@ export class ClaudeRunner implements CLIRunner {
         stable = 0
       }
       last = current
-      await new Promise((r) => setTimeout(r, ClaudeRunner.POLL_INTERVAL))
+      await sleep(ClaudeRunner.POLL_INTERVAL)
     }
     throw new Error('Claude 啟動逾時')
   }
