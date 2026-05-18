@@ -8,7 +8,5 @@ import type { CLIRunner } from './application/ports/CLIRunner.js'
 import type { BotConnection } from './application/ports/BotConnection.js'
 import { ClaudeRunner } from './infrastructure/cli/ClaudeRunner.js'
 import { UnixSocketBotConnection } from './infrastructure/control/UnixSocketBotConnection.js'
-import { CLAUDE_BIN, TMUX_SESSION } from './config.js'
-
-export const cliRunner: CLIRunner = new ClaudeRunner(CLAUDE_BIN, process.pid, TMUX_SESSION)
+export const cliRunner: CLIRunner = new ClaudeRunner(process.pid)
 export const botConnection: BotConnection = new UnixSocketBotConnection()
