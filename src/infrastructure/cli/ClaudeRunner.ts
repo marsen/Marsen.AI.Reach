@@ -8,8 +8,6 @@ export class ClaudeRunner implements CLIRunner {
   private static readonly STABLE_POLLS = 3
   private static readonly STARTUP_TIMEOUT = 60_000
 
-  constructor(private readonly botPid: number) {}
-
   async start(workDir: string): Promise<void> {
     if (this.sessionExists()) this.tmux(`kill-session -t ${TMUX_SESSION}`)
     await this.createSession(workDir)
@@ -23,7 +21,7 @@ export class ClaudeRunner implements CLIRunner {
     this.tmux(`new-session -d -s ${TMUX_SESSION} -x 220 -y 50`)
     // 對 workDir 做 shell single-quote escape，避免特殊字元被誤解析
     const safeDir = `'${workDir.replace(/'/g, `'\\''`)}'`
-    const cmd = `cd ${safeDir} && ${CLAUDE_BIN} --dangerously-skip-permissions; kill -USR1 ${this.botPid} 2>/dev/null; tmux kill-session -t ${TMUX_SESSION}`
+    const cmd = `cd ${safeDir} && ${CLAUDE_BIN} --dangerously-skip-permissions; tmux kill-session -t ${TMUX_SESSION}`
     this.tmux(`send-keys -t ${TMUX_SESSION} "${cmd}" Enter`)
     await this.waitForStablePrompt(ClaudeRunner.STARTUP_TIMEOUT)
   }

@@ -8,5 +8,5 @@ import type { CLIRunner } from './application/ports/CLIRunner.js'
 import type { BotConnection } from './application/ports/BotConnection.js'
 import { ClaudeRunner } from './infrastructure/cli/ClaudeRunner.js'
 import { UnixSocketBotConnection } from './infrastructure/control/UnixSocketBotConnection.js'
-export const cliRunner: CLIRunner = new ClaudeRunner(process.pid)
+export const cliRunner: CLIRunner = new ClaudeRunner()
 export const botConnection: BotConnection = new UnixSocketBotConnection()
