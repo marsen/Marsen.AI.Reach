@@ -7,7 +7,7 @@ import { execSync, spawnSync } from 'child_process'
 import { setTimeout as sleep } from 'timers/promises'
 import { CLIRunner } from '../../application/ports/CLIRunner.js'
 import { ClaudePaneIO } from '../../application/ports/ClaudePaneIO.js'
-import { cleanAnsi, hasPrompt, extractResponse } from '../claude/claudeParser.js'
+import { cleanAnsi, hasPrompt, extractLastExchange } from '../claude/claudeParser.js'
 import { CLAUDE_BIN, TMUX_SESSION } from '../../config.js'
 import { log } from '../../logger.js'
 
@@ -19,7 +19,7 @@ export class ClaudeRunner2 implements CLIRunner, ClaudePaneIO {
   // 觀察狀態
   private outputHandlers: Array<(text: string) => void> = []
   private pollHandle: NodeJS.Timeout | null = null
-  private lastResponse = ''   // 上次抓到的 Claude 回應（用來偵測是否有新回應）
+  private lastExchange = ''   // 上次抓到的「user + Claude」對話對
   private lastSeen = ''       // 最近一次 capture 結果（用來偵測穩定）
   private stableCount = 0
   private isFirstCapture = true
@@ -54,7 +54,7 @@ export class ClaudeRunner2 implements CLIRunner, ClaudePaneIO {
   // === 內部 ===
 
   private resetObserver(): void {
-    this.lastResponse = ''
+    this.lastExchange = ''
     this.lastSeen = ''
     this.stableCount = 0
     this.isFirstCapture = true
@@ -78,21 +78,21 @@ export class ClaudeRunner2 implements CLIRunner, ClaudePaneIO {
     this.stableCount++
     if (this.stableCount < ClaudeRunner2.STABLE_POLLS || !hasPrompt(current)) return
 
-    // 抽出 Claude 最後一段回覆（過濾 UI 噪音、保留純文字）
-    const response = extractResponse(current)
+    // 抽出最後一輪「user + Claude 回覆」，去除 banner / cook timer / 輸入框
+    const exchange = extractLastExchange(current)
 
     // 首次穩定：建立基準，不 emit（避免把 session 開機內容當作新訊息）
     if (this.isFirstCapture) {
-      this.lastResponse = response
+      this.lastExchange = exchange
       this.isFirstCapture = false
       this.stableCount = 0
       return
     }
 
-    if (response && response !== this.lastResponse) {
-      log.debug(`[pane] emit response ${response.length} chars`)
-      for (const h of this.outputHandlers) h(response)
-      this.lastResponse = response
+    if (exchange && exchange !== this.lastExchange) {
+      log.debug(`[pane] emit exchange ${exchange.length} chars`)
+      for (const h of this.outputHandlers) h(exchange)
+      this.lastExchange = exchange
     }
     this.stableCount = 0
   }
