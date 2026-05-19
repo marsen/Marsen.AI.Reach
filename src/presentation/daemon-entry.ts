@@ -11,10 +11,16 @@ import { join } from 'path'
 // 在所有 env 讀取之前載入 ~/.rai/.env
 dotenvConfig({ path: join(homedir(), '.rai', '.env') })
 
-import { cliRunner, claudePaneIO, makeTelegramBot } from '../composition.js'
+import { cliRunner, claudePaneIO, botConnection, makeTelegramBot } from '../composition.js'
 import { Daemon } from '../application/Daemon.js'
 import { ConversationMirror } from '../application/services/ConversationMirror.js'
 import { log } from '../logger.js'
+
+// 防呆：若已有 daemon 在跑就退出，避免兩個 daemon 競爭同一個 socket 檔
+if (await botConnection.isAlive()) {
+  log.info('[daemon] another instance is alive, exiting')
+  process.exit(0)
+}
 
 function requireEnv(name: string): string {
   const v = process.env[name]
