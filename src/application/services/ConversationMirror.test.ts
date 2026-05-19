@@ -1,0 +1,89 @@
+import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { ConversationMirror } from './ConversationMirror.js'
+import type { BotPort } from '../ports/BotPort.js'
+import type { ClaudePaneIO } from '../ports/ClaudePaneIO.js'
+
+const mockBot = (): BotPort => ({
+  push: vi.fn().mockResolvedValue(undefined),
+  onMessage: vi.fn(),
+  start: vi.fn().mockResolvedValue(undefined),
+  stop: vi.fn().mockResolvedValue(undefined),
+})
+
+const mockClaudeIO = (): ClaudePaneIO => ({
+  sendInput: vi.fn().mockResolvedValue(undefined),
+  onOutput: vi.fn(),
+})
+
+// 取得最近一次傳給 mock 函式的第一個參數（通常是 callback）
+const lastHandler = <T extends (...args: never[]) => unknown>(fn: T): Parameters<T>[0] =>
+  vi.mocked(fn).mock.calls.at(-1)![0]
+
+describe('ConversationMirror', () => {
+  let bot: BotPort
+  let claudeIO: ClaudePaneIO
+
+  beforeEach(() => {
+    bot = mockBot()
+    claudeIO = mockClaudeIO()
+  })
+
+  it('start() 註冊 handlers 並啟動 bot', async () => {
+    const mirror = new ConversationMirror(bot, claudeIO)
+
+    await mirror.start()
+
+    expect(bot.onMessage).toHaveBeenCalledTimes(1)
+    expect(claudeIO.onOutput).toHaveBeenCalledTimes(1)
+    expect(bot.start).toHaveBeenCalledTimes(1)
+  })
+
+  it('TC 訊息 → 呼叫 claudeIO.sendInput', async () => {
+    const mirror = new ConversationMirror(bot, claudeIO)
+    await mirror.start()
+
+    const onMessage = lastHandler(bot.onMessage)
+    onMessage('hello from TC')
+
+    expect(claudeIO.sendInput).toHaveBeenCalledWith('hello from TC')
+  })
+
+  it('Claude 新輸出 → 呼叫 bot.push', async () => {
+    const mirror = new ConversationMirror(bot, claudeIO)
+    await mirror.start()
+
+    const onOutput = lastHandler(claudeIO.onOutput)
+    onOutput('Claude says hi')
+
+    // 等 microtask 跑完 fire-and-forget 的 push
+    await Promise.resolve()
+    await Promise.resolve()
+
+    expect(bot.push).toHaveBeenCalledWith('Claude says hi')
+  })
+
+  it('Claude 輸出超過 4096 字元 → 分段 push', async () => {
+    const mirror = new ConversationMirror(bot, claudeIO)
+    await mirror.start()
+
+    const text5000 = 'a'.repeat(5000)
+    const onOutput = lastHandler(claudeIO.onOutput)
+    onOutput(text5000)
+
+    // 等所有 push 完成
+    await new Promise((r) => setImmediate(r))
+
+    expect(bot.push).toHaveBeenCalledTimes(2)
+    expect(vi.mocked(bot.push).mock.calls[0][0]).toHaveLength(4096)
+    expect(vi.mocked(bot.push).mock.calls[1][0]).toHaveLength(5000 - 4096)
+  })
+
+  it('stop() 關掉 bot', async () => {
+    const mirror = new ConversationMirror(bot, claudeIO)
+    await mirror.start()
+
+    await mirror.stop()
+
+    expect(bot.stop).toHaveBeenCalledTimes(1)
+  })
+})
