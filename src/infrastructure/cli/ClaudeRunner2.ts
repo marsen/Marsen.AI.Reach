@@ -7,7 +7,7 @@ import { execSync, spawnSync } from 'child_process'
 import { setTimeout as sleep } from 'timers/promises'
 import { CLIRunner } from '../../application/ports/CLIRunner.js'
 import { ClaudePaneIO } from '../../application/ports/ClaudePaneIO.js'
-import { cleanAnsi, hasPrompt } from '../claude/claudeParser.js'
+import { cleanAnsi, hasPrompt, extractResponse } from '../claude/claudeParser.js'
 import { CLAUDE_BIN, TMUX_SESSION } from '../../config.js'
 import { log } from '../../logger.js'
 
@@ -15,14 +15,14 @@ export class ClaudeRunner2 implements CLIRunner, ClaudePaneIO {
   private static readonly POLL_INTERVAL_MS = 800
   private static readonly STABLE_POLLS = 3            // 連續同 N 次 capture 視為穩定
   private static readonly STARTUP_TIMEOUT_MS = 60_000
-  private static readonly ANCHOR_LEN = 200            // 用「上次 emit 的最後 N 字元」當錨點找新內容
 
   // 觀察狀態
   private outputHandlers: Array<(text: string) => void> = []
   private pollHandle: NodeJS.Timeout | null = null
-  private lastAnchor = ''    // 上次 emit 後 pane 末尾的 ANCHOR_LEN 字元（找新內容的起點）
-  private lastSeen = ''      // 最近一次 capture 結果（用來偵測穩定）
+  private lastResponse = ''   // 上次抓到的 Claude 回應（用來偵測是否有新回應）
+  private lastSeen = ''       // 最近一次 capture 結果（用來偵測穩定）
   private stableCount = 0
+  private isFirstCapture = true
 
   // === CLIRunner ===
 
@@ -54,9 +54,10 @@ export class ClaudeRunner2 implements CLIRunner, ClaudePaneIO {
   // === 內部 ===
 
   private resetObserver(): void {
-    this.lastAnchor = ''
+    this.lastResponse = ''
     this.lastSeen = ''
     this.stableCount = 0
+    this.isFirstCapture = true
   }
 
   private pollOnce(): void {
@@ -65,13 +66,6 @@ export class ClaudeRunner2 implements CLIRunner, ClaudePaneIO {
       current = cleanAnsi(this.capturePane())
     } catch {
       return   // session 還沒起或剛被 kill，下次再試
-    }
-
-    // 首次成功 capture：建立 anchor（pane 末尾），不 emit（避免把開機既有內容當新訊息）
-    if (this.lastAnchor === '' && current.length > 0) {
-      this.lastAnchor = current.slice(-ClaudeRunner2.ANCHOR_LEN)
-      this.lastSeen = current
-      return
     }
 
     if (current !== this.lastSeen) {
@@ -84,18 +78,21 @@ export class ClaudeRunner2 implements CLIRunner, ClaudePaneIO {
     this.stableCount++
     if (this.stableCount < ClaudeRunner2.STABLE_POLLS || !hasPrompt(current)) return
 
-    // 找 anchor 位置，取其後內容當作新訊息
-    const idx = current.indexOf(this.lastAnchor)
-    const delta = (idx === -1)
-      ? current   // anchor 失蹤（內容變動太大 / 整個 redraw），保守 emit 全部
-      : current.slice(idx + this.lastAnchor.length)
+    // 抽出 Claude 最後一段回覆（過濾 UI 噪音、保留純文字）
+    const response = extractResponse(current)
 
-    if (delta) {
-      log.debug(`[pane] emit ${delta.length} chars (anchorIdx=${idx})`)
-      for (const h of this.outputHandlers) h(delta)
-      this.lastAnchor = current.slice(-ClaudeRunner2.ANCHOR_LEN)
-    } else {
-      log.debug('[pane] no new content after anchor')
+    // 首次穩定：建立基準，不 emit（避免把 session 開機內容當作新訊息）
+    if (this.isFirstCapture) {
+      this.lastResponse = response
+      this.isFirstCapture = false
+      this.stableCount = 0
+      return
+    }
+
+    if (response && response !== this.lastResponse) {
+      log.debug(`[pane] emit response ${response.length} chars`)
+      for (const h of this.outputHandlers) h(response)
+      this.lastResponse = response
     }
     this.stableCount = 0
   }
