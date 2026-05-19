@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { extractLastExchange } from './claudeParser.js'
+import { extractLastExchange, splitExchange } from './claudeParser.js'
 
 describe('extractLastExchange', () => {
   it('抓最後一輪（user + Claude 回應），去除 cook timer 與輸入框', () => {
@@ -39,5 +39,27 @@ describe('extractLastExchange', () => {
   it('pane 還沒任何使用者訊息 → 回空字串', () => {
     const pane = ' ▐▛███▜▌  Claude Code\n\n❯ \n────'
     expect(extractLastExchange(pane)).toBe('')
+  })
+})
+
+describe('splitExchange', () => {
+  it('拆 user + response', () => {
+    const { user, response } = splitExchange('❯ 哪裡好笑？\n\n⏺ 因為...')
+    expect(user).toBe('❯ 哪裡好笑？')
+    expect(response).toBe('⏺ 因為...')
+  })
+
+  it('工具列輸出（Listed 1 directory…）一起留在 response 內', () => {
+    const ex = '❯ 8-5\n\n  Listed 1 directory (ctrl+o to expand)\n\n⏺ 4'
+    const { user, response } = splitExchange(ex)
+    expect(user).toBe('❯ 8-5')
+    expect(response).toContain('Listed 1 directory')
+    expect(response).toContain('⏺ 4')
+  })
+
+  it('沒 user 行 → user 為空、response 為全文', () => {
+    const { user, response } = splitExchange('⏺ 漂浮的 Claude 回覆')
+    expect(user).toBe('')
+    expect(response).toBe('⏺ 漂浮的 Claude 回覆')
   })
 })

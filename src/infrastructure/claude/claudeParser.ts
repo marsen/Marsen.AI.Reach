@@ -28,6 +28,18 @@ export function extractResponse(pane: string): string {
 }
 
 /**
+ * 把 extractLastExchange 結果拆成「使用者訊息」+「之後內容（Claude 回覆/工具）」兩段，分開傳送。
+ */
+export function splitExchange(exchange: string): { user: string; response: string } {
+  const lines = exchange.split('\n')
+  const userIdx = lines.findIndex((l) => l.startsWith('❯ '))
+  if (userIdx === -1) return { user: '', response: exchange.trim() }
+  const user = lines[userIdx].trim()
+  const response = lines.slice(userIdx + 1).join('\n').trim()
+  return { user, response }
+}
+
+/**
  * 抽取「最後一輪對話」：使用者送出的訊息 + Claude 的回覆，去除 banner、cook timer、輸入框邊線。
  * 找不到回合（pane 還沒任何使用者訊息）→ 回空字串。
  */
