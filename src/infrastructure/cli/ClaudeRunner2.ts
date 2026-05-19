@@ -9,6 +9,7 @@ import { CLIRunner } from '../../application/ports/CLIRunner.js'
 import { ClaudePaneIO } from '../../application/ports/ClaudePaneIO.js'
 import { cleanAnsi, hasPrompt } from '../claude/claudeParser.js'
 import { CLAUDE_BIN, TMUX_SESSION } from '../../config.js'
+import { log } from '../../logger.js'
 
 export class ClaudeRunner2 implements CLIRunner, ClaudePaneIO {
   private static readonly POLL_INTERVAL_MS = 800
@@ -82,11 +83,15 @@ export class ClaudeRunner2 implements CLIRunner, ClaudePaneIO {
     this.stableCount++
     const isStable = this.stableCount >= ClaudeRunner2.STABLE_POLLS
     const hasNewContent = current !== this.lastEmitted
-    if (!isStable || !hasNewContent || !hasPrompt(current)) return
+    const promptShown = hasPrompt(current)
+    if (!isStable || !hasNewContent || !promptShown) return
 
     const delta = this.diff(this.lastEmitted, current)
+    log.debug(`[pane] emit candidate: stable=${this.stableCount} new=${hasNewContent} prompt=${promptShown} delta=${delta.length}`)
     if (delta) {
       for (const h of this.outputHandlers) h(delta)
+    } else {
+      log.debug('[pane] delta empty (curr does not startsWith prev) — skipping emit')
     }
     this.lastEmitted = current
     this.stableCount = 0

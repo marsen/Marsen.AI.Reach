@@ -1,5 +1,6 @@
 import type { BotPort } from '../ports/BotPort.js'
 import type { ClaudePaneIO } from '../ports/ClaudePaneIO.js'
+import { log } from '../../logger.js'
 
 /**
  * 把同一個 Claude 對話「鏡射」到多個介面（目前 TC，未來 App）。
@@ -30,20 +31,20 @@ export class ConversationMirror {
   }
 
   private forwardToClaude(text: string): void {
+    log.info(`[mirror] TC→Claude: ${text.length} chars`)
     // bot 的 onMessage handler 簽名是 sync，這裡 fire-and-forget；失敗只記 log，不中斷 mirror
-    this.claudeIO.sendInput(text).catch((e: unknown) => {
-      console.error('Failed to send input to Claude:', e instanceof Error ? e.message : String(e))
-    })
+    this.claudeIO.sendInput(text).catch((e: unknown) => log.error('[mirror] sendInput failed', e))
   }
 
   private forwardToBot(text: string): void {
-    void this.pushChunked(text).catch((e: unknown) => {
-      console.error('Failed to push to bot:', e instanceof Error ? e.message : String(e))
-    })
+    log.info(`[mirror] Claude→TC: ${text.length} chars`)
+    void this.pushChunked(text).catch((e: unknown) => log.error('[mirror] pushChunked failed', e))
   }
 
   private async pushChunked(text: string): Promise<void> {
-    for (const chunk of this.chunk(text)) {
+    const chunks = this.chunk(text)
+    log.debug(`[mirror] push ${chunks.length} chunk(s)`)
+    for (const chunk of chunks) {
       await this.bot.push(chunk)
     }
   }

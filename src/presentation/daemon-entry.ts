@@ -14,6 +14,7 @@ dotenvConfig({ path: join(homedir(), '.rai', '.env') })
 import { cliRunner, claudePaneIO, makeTelegramBot } from '../composition.js'
 import { Daemon } from '../application/Daemon.js'
 import { ConversationMirror } from '../application/services/ConversationMirror.js'
+import { log } from '../logger.js'
 
 function requireEnv(name: string): string {
   const v = process.env[name]
@@ -29,8 +30,9 @@ const mirror = new ConversationMirror(bot, claudePaneIO)
 
 const daemon = new Daemon(cliRunner)
 daemon.start()
+log.info('[daemon] socket listening')
 await mirror.start()
-console.log('[daemon] listening, mirror started')
+log.info('[daemon] mirror started')
 
 const shutdown = (): void => {
   void (async () => {
