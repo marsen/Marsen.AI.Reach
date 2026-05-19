@@ -33,6 +33,7 @@ describe('extractLastExchange', () => {
     expect(result).not.toContain('✻')      // cook timer 移掉
     expect(result).not.toContain('Claude Code v2.1.144')   // banner 不在
     expect(result).not.toContain('1+3?')   // 上一輪不在（只抓最後一輪）
+    expect(result).not.toMatch(/^[─━－-]{3,}$/m)   // 整行橫線裝飾不在
   })
 
   it('pane 還沒任何使用者訊息 → 回空字串', () => {

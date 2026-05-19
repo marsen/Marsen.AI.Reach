@@ -3,6 +3,8 @@ export const PROMPT_RE = /❯[^\n]*\r?\n[-─]+/
 const USER_INPUT_RE = /❯ [^\s].*/g
 // Claude 「思考中 / 已思考多少秒」的狀態列噪音
 const COOK_TIMER_RE = /^\s*✻ .+$/gm
+// 整行只有橫線（box drawing、半形 dash、全形 dash 等）的裝飾線
+const HORIZONTAL_LINE_RE = /^\s*[─━━－-]{3,}\s*$/gm
 
 export function cleanAnsi(s: string): string {
   return s.replace(/\x1B\[[0-9;]*[a-zA-Z]/g, '')
@@ -47,6 +49,10 @@ export function extractLastExchange(pane: string): string {
     ? fromExchange
     : fromExchange.slice(0, lastMatch[0].length + promptIdx)
 
-  // 去 cook timer、收斂多餘空行
-  return exchange.replace(COOK_TIMER_RE, '').replace(/\n{3,}/g, '\n\n').trim()
+  // 去 cook timer、整行裝飾線、收斂多餘空行
+  return exchange
+    .replace(COOK_TIMER_RE, '')
+    .replace(HORIZONTAL_LINE_RE, '')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim()
 }
