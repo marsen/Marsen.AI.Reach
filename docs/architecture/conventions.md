@@ -6,7 +6,7 @@
 
 ### 分層結構
 
-```
+```text
 src/
 ├── domain/              # 高內聚商業邏輯（純函式，可單元測試）
 │   ├── entities/        # Entity（核心資料 + 行為）
@@ -69,6 +69,26 @@ Hex 原本區分 driving adapter（input）/ driven adapter（output），實作
 
 ## 程式碼原則
 
+### 禁止 magic number
+
+程式碼內不能有意義不明的字面數字 / 字串常數。
+
+- **數字 / 字串字面值** → 命名為 `const`，加註解說明來由
+- **例外**：`0`、`1`、`-1`、`2` 等明顯語意的（陣列索引、布林反向等）可直接使用
+- **測試資料**：可用字面值，但若反覆出現相同值，仍應命名
+
+```ts
+// ❌ 不行
+setTimeout(retry, 4000)
+if (text.length > 4096) split(text)
+
+// ✅ OK
+const TELEGRAM_MAX_LEN = 4096   // Telegram 單則訊息字元上限
+const RETRY_INTERVAL_MS = 4000  // 每次重試間隔
+setTimeout(retry, RETRY_INTERVAL_MS)
+if (text.length > TELEGRAM_MAX_LEN) split(text)
+```
+
 ### 禁止 `process.env.X ?? 'default'`
 
 預設值會讓「環境變數忘了設」的 bug 靜默通過，違反 fail-loud 原則。
@@ -80,10 +100,11 @@ Hex 原本區分 driving adapter（input）/ driven adapter（output），實作
 ## Git 工作流程
 
 ### 分支命名
+
 格式：`<type>/短名稱` 或 `<type>/NNN-短名稱`
 
 | Prefix | 用途 |
-|--------|------|
+| --- | --- |
 | `feat/` | 新功能 |
 | `fix/` | 修 bug |
 | `refactor/` | 重構 |
@@ -93,7 +114,7 @@ Hex 原本區分 driving adapter（input）/ driven adapter（output），實作
 
 ### Commit 格式（Conventional Commits）
 
-```
+```text
 feat: 新增 xxx 功能
 fix: 修正 xxx 問題
 refactor: 重構 xxx
