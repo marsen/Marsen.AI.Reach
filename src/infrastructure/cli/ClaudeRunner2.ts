@@ -15,11 +15,12 @@ export class ClaudeRunner2 implements CLIRunner, ClaudePaneIO {
   private static readonly POLL_INTERVAL_MS = 800
   private static readonly STABLE_POLLS = 3            // 連續同 N 次 capture 視為穩定
   private static readonly STARTUP_TIMEOUT_MS = 60_000
+  private static readonly ANCHOR_LEN = 200            // 用「上次 emit 的最後 N 字元」當錨點找新內容
 
   // 觀察狀態
   private outputHandlers: Array<(text: string) => void> = []
   private pollHandle: NodeJS.Timeout | null = null
-  private lastEmitted = ''   // 上次已 emit 給 handler 的全文 snapshot
+  private lastAnchor = ''    // 上次 emit 後 pane 末尾的 ANCHOR_LEN 字元（找新內容的起點）
   private lastSeen = ''      // 最近一次 capture 結果（用來偵測穩定）
   private stableCount = 0
 
@@ -53,7 +54,7 @@ export class ClaudeRunner2 implements CLIRunner, ClaudePaneIO {
   // === 內部 ===
 
   private resetObserver(): void {
-    this.lastEmitted = ''
+    this.lastAnchor = ''
     this.lastSeen = ''
     this.stableCount = 0
   }
@@ -66,9 +67,9 @@ export class ClaudeRunner2 implements CLIRunner, ClaudePaneIO {
       return   // session 還沒起或剛被 kill，下次再試
     }
 
-    // 首次成功 capture：建立 baseline，不 emit（避免把 session 開機既有內容當作新訊息）
-    if (this.lastEmitted === '') {
-      this.lastEmitted = current
+    // 首次成功 capture：建立 anchor（pane 末尾），不 emit（避免把開機既有內容當新訊息）
+    if (this.lastAnchor === '' && current.length > 0) {
+      this.lastAnchor = current.slice(-ClaudeRunner2.ANCHOR_LEN)
       this.lastSeen = current
       return
     }
@@ -81,26 +82,22 @@ export class ClaudeRunner2 implements CLIRunner, ClaudePaneIO {
 
     // 內容跟上次 capture 一樣 → 穩定計數 +1
     this.stableCount++
-    const isStable = this.stableCount >= ClaudeRunner2.STABLE_POLLS
-    const hasNewContent = current !== this.lastEmitted
-    const promptShown = hasPrompt(current)
-    if (!isStable || !hasNewContent || !promptShown) return
+    if (this.stableCount < ClaudeRunner2.STABLE_POLLS || !hasPrompt(current)) return
 
-    const delta = this.diff(this.lastEmitted, current)
-    log.debug(`[pane] emit candidate: stable=${this.stableCount} new=${hasNewContent} prompt=${promptShown} delta=${delta.length}`)
+    // 找 anchor 位置，取其後內容當作新訊息
+    const idx = current.indexOf(this.lastAnchor)
+    const delta = (idx === -1)
+      ? current   // anchor 失蹤（內容變動太大 / 整個 redraw），保守 emit 全部
+      : current.slice(idx + this.lastAnchor.length)
+
     if (delta) {
+      log.debug(`[pane] emit ${delta.length} chars (anchorIdx=${idx})`)
       for (const h of this.outputHandlers) h(delta)
+      this.lastAnchor = current.slice(-ClaudeRunner2.ANCHOR_LEN)
     } else {
-      log.debug('[pane] delta empty (curr does not startsWith prev) — skipping emit')
+      log.debug('[pane] no new content after anchor')
     }
-    this.lastEmitted = current
     this.stableCount = 0
-  }
-
-  private diff(prev: string, curr: string): string {
-    // 簡單前綴匹配；pane 因 history buffer 上限被 truncate 時 fall through 回空字串（保守不 emit）
-    if (curr.startsWith(prev)) return curr.slice(prev.length)
-    return ''
   }
 
   private async createSession(workDir: string): Promise<void> {
