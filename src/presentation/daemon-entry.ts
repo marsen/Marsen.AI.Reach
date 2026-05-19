@@ -22,8 +22,8 @@ function requireEnv(name: string): string {
 }
 
 const bot = makeTelegramBot(
-  requireEnv('TELEGRAM_BOT_TOKEN'),
-  Number(requireEnv('TELEGRAM_CHAT_ID')),
+  requireEnv('BOT_TOKEN'),
+  Number(requireEnv('TELEGRAM_USER_ID')),
 )
 const mirror = new ConversationMirror(bot, claudePaneIO)
 
