@@ -22,7 +22,6 @@ export class ClaudeRunner2 implements CLIRunner, ClaudePaneIO {
   private lastExchange = ''   // 上次抓到的「user + Claude」對話對
   private lastSeen = ''       // 最近一次 capture 結果（用來偵測穩定）
   private stableCount = 0
-  private isFirstCapture = true
 
   // === CLIRunner ===
 
@@ -57,7 +56,6 @@ export class ClaudeRunner2 implements CLIRunner, ClaudePaneIO {
     this.lastExchange = ''
     this.lastSeen = ''
     this.stableCount = 0
-    this.isFirstCapture = true
   }
 
   private pollOnce(): void {
@@ -80,15 +78,7 @@ export class ClaudeRunner2 implements CLIRunner, ClaudePaneIO {
 
     // 抽出最後一輪「user + Claude 回覆」，去除 banner / cook timer / 輸入框
     const exchange = extractLastExchange(current)
-
-    // 首次穩定：建立基準，不 emit（避免把 session 開機內容當作新訊息）
-    if (this.isFirstCapture) {
-      this.lastExchange = exchange
-      this.isFirstCapture = false
-      this.stableCount = 0
-      return
-    }
-
+    // 空字串 = 還沒有使用者訊息（剛開 session）；下次再看。lastExchange 初值也是空，自然不會誤觸 emit。
     if (exchange && exchange !== this.lastExchange) {
       log.debug(`[pane] emit exchange ${exchange.length} chars`)
       for (const h of this.outputHandlers) h(exchange)
