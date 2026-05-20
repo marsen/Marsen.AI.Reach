@@ -20,6 +20,7 @@ export class TelegramBot implements BotPort {
     })
   }
 
+  // Telegram 單則訊息上限 4096 字元；超過會被 API 拒絕，呼叫端需自行分段
   async send(text: string): Promise<void> {
     await this.bot.api.sendMessage(this.chatId, text)
   }
