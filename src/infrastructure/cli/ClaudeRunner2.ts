@@ -15,6 +15,11 @@ export class ClaudeRunner2 implements CLIRunner, CLIPaneIO {
   private static readonly POLL_INTERVAL_MS = 800
   private static readonly STABLE_POLLS = 3            // 連續同 N 次 capture 視為穩定
   private static readonly STARTUP_TIMEOUT_MS = 60_000
+  // tmux pane 尺寸：寬度需容納 Claude UI 一行（含 cook timer / 輸入框邊框），高度給多輪對話展開
+  private static readonly PANE_WIDTH = 220
+  private static readonly PANE_HEIGHT = 50
+  // capture-pane 往回看的行數；需 >= 一輪 exchange 可能的高度，以免 extractLastExchange 抓不到 user 行
+  private static readonly SCROLL_BUFFER_LINES = 1000
 
   // 觀察狀態
   private outputHandlers: Array<(text: string) => void> = []
@@ -88,7 +93,7 @@ export class ClaudeRunner2 implements CLIRunner, CLIPaneIO {
   }
 
   private async createSession(workDir: string): Promise<void> {
-    this.tmux(`new-session -d -s ${TMUX_SESSION} -x 220 -y 50`)
+    this.tmux(`new-session -d -s ${TMUX_SESSION} -x ${ClaudeRunner2.PANE_WIDTH} -y ${ClaudeRunner2.PANE_HEIGHT}`)
     // 對 workDir 做 shell single-quote escape，避免特殊字元被誤解析
     const safeDir = `'${workDir.replace(/'/g, `'\\''`)}'`
     const launchClaude = `${CLAUDE_BIN} --dangerously-skip-permissions`
@@ -104,7 +109,7 @@ export class ClaudeRunner2 implements CLIRunner, CLIPaneIO {
   }
 
   private capturePane(): string {
-    return this.tmux(`capture-pane -t ${TMUX_SESSION} -p -S -1000`)
+    return this.tmux(`capture-pane -t ${TMUX_SESSION} -p -S -${ClaudeRunner2.SCROLL_BUFFER_LINES}`)
   }
 
   private sessionExists(): boolean {
