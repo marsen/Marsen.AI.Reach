@@ -21,12 +21,12 @@ export class ConversationMirror {
 
   constructor(
     private readonly bot: BotPort,
-    private readonly claudeIO: CLIPaneIO,
+    private readonly cliIO: CLIPaneIO,
   ) {}
 
   async start(): Promise<void> {
     this.bot.onMessage((text) => this.forwardToClaude(text))
-    this.claudeIO.onMessage((text) => this.forwardToBot(text))
+    this.cliIO.onMessage((text) => this.forwardToBot(text))
     await this.bot.start()
   }
 
@@ -38,7 +38,7 @@ export class ConversationMirror {
     log.info(`[mirror] TC→Claude: ${text.length} chars`)
     this.lastTcInput = text
     // bot 的 onMessage handler 簽名是 sync，這裡 fire-and-forget；失敗只記 log，不中斷 mirror
-    this.claudeIO.send(text).catch((e: unknown) => log.error('[mirror] send failed', e))
+    this.cliIO.send(text).catch((e: unknown) => log.error('[mirror] send failed', e))
   }
 
   private forwardToBot(text: string): void {
