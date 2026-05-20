@@ -78,6 +78,58 @@ describe('ConversationMirror', () => {
     expect(vi.mocked(bot.push).mock.calls[1][0]).toHaveLength(5000 - 4096)
   })
 
+  it('TC 來源的問題 → Claude emit exchange 時剝掉 user 行，只 push response', async () => {
+    const mirror = new ConversationMirror(bot, claudeIO)
+    await mirror.start()
+
+    // TC 送進來 "123"
+    const onMessage = lastHandler(bot.onMessage)
+    onMessage('123')
+
+    // Claude pane 抓到 exchange（含 user 行 + 回應）
+    const onOutput = lastHandler(claudeIO.onOutput)
+    onOutput('❯ 123\n\n收到，請問需要做什麼？')
+
+    await new Promise((r) => setImmediate(r))
+
+    expect(bot.push).toHaveBeenCalledTimes(1)
+    expect(vi.mocked(bot.push).mock.calls[0][0]).toBe('收到，請問需要做什麼？')
+  })
+
+  it('PC 來源的問題（沒走過 TC）→ push 整段含 user 行', async () => {
+    const mirror = new ConversationMirror(bot, claudeIO)
+    await mirror.start()
+
+    // 沒有 TC onMessage，直接 Claude 端冒出 exchange
+    const onOutput = lastHandler(claudeIO.onOutput)
+    onOutput('❯ 123\n\n收到，請問需要做什麼？')
+
+    await new Promise((r) => setImmediate(r))
+
+    expect(bot.push).toHaveBeenCalledTimes(1)
+    expect(vi.mocked(bot.push).mock.calls[0][0]).toBe('❯ 123\n\n收到，請問需要做什麼？')
+  })
+
+  it('TC 來源剝完 → 下一輪（PC 來源）回到整段模式', async () => {
+    const mirror = new ConversationMirror(bot, claudeIO)
+    await mirror.start()
+
+    const onMessage = lastHandler(bot.onMessage)
+    const onOutput = lastHandler(claudeIO.onOutput)
+
+    onMessage('123')
+    onOutput('❯ 123\n\n回應 A')
+    await new Promise((r) => setImmediate(r))
+
+    // 下一輪沒走 TC（PC 端打字）
+    onOutput('❯ 456\n\n回應 B')
+    await new Promise((r) => setImmediate(r))
+
+    expect(bot.push).toHaveBeenCalledTimes(2)
+    expect(vi.mocked(bot.push).mock.calls[0][0]).toBe('回應 A')
+    expect(vi.mocked(bot.push).mock.calls[1][0]).toBe('❯ 456\n\n回應 B')
+  })
+
   it('stop() 關掉 bot', async () => {
     const mirror = new ConversationMirror(bot, claudeIO)
     await mirror.start()
