@@ -11,8 +11,8 @@ const mockBot = (): BotPort => ({
 })
 
 const mockClaudeIO = (): CLIPaneIO => ({
-  sendInput: vi.fn().mockResolvedValue(undefined),
-  onOutput: vi.fn(),
+  send: vi.fn().mockResolvedValue(undefined),
+  onMessage: vi.fn(),
 })
 
 // 取得最近一次傳給 mock 函式的第一個參數（通常是 callback）
@@ -34,26 +34,26 @@ describe('ConversationMirror', () => {
     await mirror.start()
 
     expect(bot.onMessage).toHaveBeenCalledTimes(1)
-    expect(claudeIO.onOutput).toHaveBeenCalledTimes(1)
+    expect(claudeIO.onMessage).toHaveBeenCalledTimes(1)
     expect(bot.start).toHaveBeenCalledTimes(1)
   })
 
-  it('TC 訊息 → 呼叫 claudeIO.sendInput', async () => {
+  it('TC 訊息 → 呼叫 claudeIO.send', async () => {
     const mirror = new ConversationMirror(bot, claudeIO)
     await mirror.start()
 
-    const onMessage = lastHandler(bot.onMessage)
-    onMessage('hello from TC')
+    const fromBot = lastHandler(bot.onMessage)
+    fromBot('hello from TC')
 
-    expect(claudeIO.sendInput).toHaveBeenCalledWith('hello from TC')
+    expect(claudeIO.send).toHaveBeenCalledWith('hello from TC')
   })
 
   it('Claude 新輸出 → 呼叫 bot.push', async () => {
     const mirror = new ConversationMirror(bot, claudeIO)
     await mirror.start()
 
-    const onOutput = lastHandler(claudeIO.onOutput)
-    onOutput('Claude says hi')
+    const fromClaude = lastHandler(claudeIO.onMessage)
+    fromClaude('Claude says hi')
 
     // 等 microtask 跑完 fire-and-forget 的 push
     await Promise.resolve()
@@ -67,8 +67,8 @@ describe('ConversationMirror', () => {
     await mirror.start()
 
     const text5000 = 'a'.repeat(5000)
-    const onOutput = lastHandler(claudeIO.onOutput)
-    onOutput(text5000)
+    const fromClaude = lastHandler(claudeIO.onMessage)
+    fromClaude(text5000)
 
     // 等所有 push 完成
     await new Promise((r) => setImmediate(r))
@@ -83,12 +83,12 @@ describe('ConversationMirror', () => {
     await mirror.start()
 
     // TC 送進來 "123"
-    const onMessage = lastHandler(bot.onMessage)
-    onMessage('123')
+    const fromBot = lastHandler(bot.onMessage)
+    fromBot('123')
 
     // Claude pane 抓到 exchange（含 user 行 + 回應）
-    const onOutput = lastHandler(claudeIO.onOutput)
-    onOutput('❯ 123\n\n收到，請問需要做什麼？')
+    const fromClaude = lastHandler(claudeIO.onMessage)
+    fromClaude('❯ 123\n\n收到，請問需要做什麼？')
 
     await new Promise((r) => setImmediate(r))
 
@@ -101,8 +101,8 @@ describe('ConversationMirror', () => {
     await mirror.start()
 
     // 沒有 TC onMessage，直接 Claude 端冒出 exchange
-    const onOutput = lastHandler(claudeIO.onOutput)
-    onOutput('❯ 123\n\n收到，請問需要做什麼？')
+    const fromClaude = lastHandler(claudeIO.onMessage)
+    fromClaude('❯ 123\n\n收到，請問需要做什麼？')
 
     await new Promise((r) => setImmediate(r))
 
@@ -114,15 +114,15 @@ describe('ConversationMirror', () => {
     const mirror = new ConversationMirror(bot, claudeIO)
     await mirror.start()
 
-    const onMessage = lastHandler(bot.onMessage)
-    const onOutput = lastHandler(claudeIO.onOutput)
+    const fromBot = lastHandler(bot.onMessage)
+    const fromClaude = lastHandler(claudeIO.onMessage)
 
-    onMessage('123')
-    onOutput('❯ 123\n\n回應 A')
+    fromBot('123')
+    fromClaude('❯ 123\n\n回應 A')
     await new Promise((r) => setImmediate(r))
 
     // 下一輪沒走 TC（PC 端打字）
-    onOutput('❯ 456\n\n回應 B')
+    fromClaude('❯ 456\n\n回應 B')
     await new Promise((r) => setImmediate(r))
 
     expect(bot.push).toHaveBeenCalledTimes(2)

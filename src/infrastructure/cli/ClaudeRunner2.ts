@@ -37,13 +37,13 @@ export class ClaudeRunner2 implements CLIRunner, CLIPaneIO {
 
   // === CLIPaneIO ===
 
-  async sendInput(text: string): Promise<void> {
+  async send(text: string): Promise<void> {
     // 用 spawnSync + 陣列 args，避開 shell 注入
     const r = spawnSync('tmux', ['send-keys', '-t', TMUX_SESSION, text, 'Enter'], { stdio: 'pipe' })
     if (r.status !== 0) throw new Error(`tmux send-keys 失敗：${r.stderr?.toString() ?? '(no stderr)'}`)
   }
 
-  onOutput(handler: (text: string) => void): void {
+  onMessage(handler: (text: string) => void): void {
     this.outputHandlers.push(handler)
     if (!this.pollHandle) {
       this.pollHandle = setInterval(() => this.pollOnce(), ClaudeRunner2.POLL_INTERVAL_MS)

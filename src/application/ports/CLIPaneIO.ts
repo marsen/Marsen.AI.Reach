@@ -6,8 +6,8 @@
  */
 export interface CLIPaneIO {
   /** 把 text 送入 CLI（模擬使用者輸入）。 */
-  sendInput(text: string): Promise<void>
+  send(text: string): Promise<void>
 
   /** 註冊 callback；session 有新輸出時被呼叫，參數為新增的內容（不含已看過部分）。 */
-  onOutput(handler: (text: string) => void): void
+  onMessage(handler: (text: string) => void): void
 }
