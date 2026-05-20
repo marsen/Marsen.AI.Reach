@@ -4,18 +4,18 @@
  */
 
 import type { CLIRunner } from './application/ports/CLIRunner.js'
-import type { ClaudePaneIO } from './application/ports/ClaudePaneIO.js'
+import type { CLIPaneIO } from './application/ports/CLIPaneIO.js'
 import type { BotPort } from './application/ports/BotPort.js'
 import type { BotConnection } from './application/ports/BotConnection.js'
 import { ClaudeRunner2 } from './infrastructure/cli/ClaudeRunner2.js'
 import { UnixSocketBotConnection } from './infrastructure/control/UnixSocketBotConnection.js'
 import { TelegramBot } from './infrastructure/platforms/TelegramBot.js'
 
-// ClaudeRunner2 同時實作 CLIRunner + ClaudePaneIO，同個 instance 綁兩個 port
+// ClaudeRunner2 同時實作 CLIRunner + CLIPaneIO，同個 instance 綁兩個 port
 const tmuxClaude = new ClaudeRunner2()
 
 export const cliRunner: CLIRunner = tmuxClaude
-export const claudePaneIO: ClaudePaneIO = tmuxClaude
+export const cliPaneIO: CLIPaneIO = tmuxClaude
 export const botConnection: BotConnection = new UnixSocketBotConnection()
 
 // TelegramBot 需要 runtime 才知道的 token/chatId，提供 factory 讓 entry 在讀完 env 後呼叫

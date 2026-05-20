@@ -1,17 +1,17 @@
 /**
- * ClaudeRunner2 —— ClaudeRunner 的下一代，多實作 ClaudePaneIO（送輸入 + 訂閱輸出）。
+ * ClaudeRunner2 —— ClaudeRunner 的下一代，多實作 CLIPaneIO（送輸入 + 訂閱輸出）。
  *
  * 之所以叫 2：為了與舊版並存，B 路徑切換完成 + bot.ts 退場後會 rename 並搬至 infrastructure/claude/。
  */
 import { execSync, spawnSync } from 'child_process'
 import { setTimeout as sleep } from 'timers/promises'
 import { CLIRunner } from '../../application/ports/CLIRunner.js'
-import { ClaudePaneIO } from '../../application/ports/ClaudePaneIO.js'
+import { CLIPaneIO } from '../../application/ports/CLIPaneIO.js'
 import { cleanAnsi, hasPrompt, extractLastExchange } from '../claude/claudeParser.js'
 import { CLAUDE_BIN, TMUX_SESSION } from '../../config.js'
 import { log } from '../../logger.js'
 
-export class ClaudeRunner2 implements CLIRunner, ClaudePaneIO {
+export class ClaudeRunner2 implements CLIRunner, CLIPaneIO {
   private static readonly POLL_INTERVAL_MS = 800
   private static readonly STABLE_POLLS = 3            // 連續同 N 次 capture 視為穩定
   private static readonly STARTUP_TIMEOUT_MS = 60_000
@@ -35,7 +35,7 @@ export class ClaudeRunner2 implements CLIRunner, ClaudePaneIO {
     return this.sessionExists() && this.isClaudeRunning()
   }
 
-  // === ClaudePaneIO ===
+  // === CLIPaneIO ===
 
   async sendInput(text: string): Promise<void> {
     // 用 spawnSync + 陣列 args，避開 shell 注入

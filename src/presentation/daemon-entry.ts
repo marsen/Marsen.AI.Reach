@@ -11,7 +11,7 @@ import { join } from 'path'
 // 在所有 env 讀取之前載入 ~/.rai/.env
 dotenvConfig({ path: join(homedir(), '.rai', '.env') })
 
-import { cliRunner, claudePaneIO, botConnection, makeTelegramBot } from '../composition.js'
+import { cliRunner, cliPaneIO, botConnection, makeTelegramBot } from '../composition.js'
 import { Daemon } from '../application/Daemon.js'
 import { ConversationMirror } from '../application/services/ConversationMirror.js'
 import { log } from '../logger.js'
@@ -32,7 +32,7 @@ const bot = makeTelegramBot(
   requireEnv('TELEGRAM_BOT_TOKEN'),
   Number(requireEnv('TELEGRAM_USER_ID')),
 )
-const mirror = new ConversationMirror(bot, claudePaneIO)
+const mirror = new ConversationMirror(bot, cliPaneIO)
 
 const daemon = new Daemon(cliRunner)
 daemon.start()

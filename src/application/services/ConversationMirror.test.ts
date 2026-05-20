@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { ConversationMirror } from './ConversationMirror.js'
 import type { BotPort } from '../ports/BotPort.js'
-import type { ClaudePaneIO } from '../ports/ClaudePaneIO.js'
+import type { CLIPaneIO } from '../ports/CLIPaneIO.js'
 
 const mockBot = (): BotPort => ({
   push: vi.fn().mockResolvedValue(undefined),
@@ -10,7 +10,7 @@ const mockBot = (): BotPort => ({
   stop: vi.fn().mockResolvedValue(undefined),
 })
 
-const mockClaudeIO = (): ClaudePaneIO => ({
+const mockClaudeIO = (): CLIPaneIO => ({
   sendInput: vi.fn().mockResolvedValue(undefined),
   onOutput: vi.fn(),
 })
@@ -21,7 +21,7 @@ const lastHandler = <T extends (...args: never[]) => unknown>(fn: T): Parameters
 
 describe('ConversationMirror', () => {
   let bot: BotPort
-  let claudeIO: ClaudePaneIO
+  let claudeIO: CLIPaneIO
 
   beforeEach(() => {
     bot = mockBot()

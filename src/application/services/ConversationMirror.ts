@@ -1,5 +1,5 @@
 import type { BotPort } from '../ports/BotPort.js'
-import type { ClaudePaneIO } from '../ports/ClaudePaneIO.js'
+import type { CLIPaneIO } from '../ports/CLIPaneIO.js'
 import { log } from '../../logger.js'
 
 /**
@@ -21,7 +21,7 @@ export class ConversationMirror {
 
   constructor(
     private readonly bot: BotPort,
-    private readonly claudeIO: ClaudePaneIO,
+    private readonly claudeIO: CLIPaneIO,
   ) {}
 
   async start(): Promise<void> {
