@@ -4,7 +4,7 @@ import type { BotPort } from '../ports/BotPort.js'
 import type { CLIPaneIO } from '../ports/CLIPaneIO.js'
 
 const mockBot = (): BotPort => ({
-  push: vi.fn().mockResolvedValue(undefined),
+  send: vi.fn().mockResolvedValue(undefined),
   onMessage: vi.fn(),
   start: vi.fn().mockResolvedValue(undefined),
   stop: vi.fn().mockResolvedValue(undefined),
@@ -48,7 +48,7 @@ describe('ConversationMirror', () => {
     expect(cliIO.send).toHaveBeenCalledWith('hello from TC')
   })
 
-  it('Claude 新輸出 → 呼叫 bot.push', async () => {
+  it('Claude 新輸出 → 呼叫 bot.send', async () => {
     const mirror = new ConversationMirror(bot, cliIO)
     await mirror.start()
 
@@ -59,7 +59,7 @@ describe('ConversationMirror', () => {
     await Promise.resolve()
     await Promise.resolve()
 
-    expect(bot.push).toHaveBeenCalledWith('Claude says hi')
+    expect(bot.send).toHaveBeenCalledWith('Claude says hi')
   })
 
   it('Claude 輸出超過 4096 字元 → 分段 push', async () => {
@@ -73,9 +73,9 @@ describe('ConversationMirror', () => {
     // 等所有 push 完成
     await new Promise((r) => setImmediate(r))
 
-    expect(bot.push).toHaveBeenCalledTimes(2)
-    expect(vi.mocked(bot.push).mock.calls[0][0]).toHaveLength(4096)
-    expect(vi.mocked(bot.push).mock.calls[1][0]).toHaveLength(5000 - 4096)
+    expect(bot.send).toHaveBeenCalledTimes(2)
+    expect(vi.mocked(bot.send).mock.calls[0][0]).toHaveLength(4096)
+    expect(vi.mocked(bot.send).mock.calls[1][0]).toHaveLength(5000 - 4096)
   })
 
   it('TC 來源的問題 → Claude emit exchange 時剝掉 user 行，只 push response', async () => {
@@ -92,8 +92,8 @@ describe('ConversationMirror', () => {
 
     await new Promise((r) => setImmediate(r))
 
-    expect(bot.push).toHaveBeenCalledTimes(1)
-    expect(vi.mocked(bot.push).mock.calls[0][0]).toBe('收到，請問需要做什麼？')
+    expect(bot.send).toHaveBeenCalledTimes(1)
+    expect(vi.mocked(bot.send).mock.calls[0][0]).toBe('收到，請問需要做什麼？')
   })
 
   it('PC 來源的問題（沒走過 TC）→ push 整段含 user 行', async () => {
@@ -106,8 +106,8 @@ describe('ConversationMirror', () => {
 
     await new Promise((r) => setImmediate(r))
 
-    expect(bot.push).toHaveBeenCalledTimes(1)
-    expect(vi.mocked(bot.push).mock.calls[0][0]).toBe('❯ 123\n\n收到，請問需要做什麼？')
+    expect(bot.send).toHaveBeenCalledTimes(1)
+    expect(vi.mocked(bot.send).mock.calls[0][0]).toBe('❯ 123\n\n收到，請問需要做什麼？')
   })
 
   it('TC 來源剝完 → 下一輪（PC 來源）回到整段模式', async () => {
@@ -125,9 +125,9 @@ describe('ConversationMirror', () => {
     fromClaude('❯ 456\n\n回應 B')
     await new Promise((r) => setImmediate(r))
 
-    expect(bot.push).toHaveBeenCalledTimes(2)
-    expect(vi.mocked(bot.push).mock.calls[0][0]).toBe('回應 A')
-    expect(vi.mocked(bot.push).mock.calls[1][0]).toBe('❯ 456\n\n回應 B')
+    expect(bot.send).toHaveBeenCalledTimes(2)
+    expect(vi.mocked(bot.send).mock.calls[0][0]).toBe('回應 A')
+    expect(vi.mocked(bot.send).mock.calls[1][0]).toBe('❯ 456\n\n回應 B')
   })
 
   it('stop() 關掉 bot', async () => {

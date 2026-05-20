@@ -20,7 +20,7 @@ export class TelegramBot implements BotPort {
     })
   }
 
-  async push(text: string): Promise<void> {
+  async send(text: string): Promise<void> {
     await this.bot.api.sendMessage(this.chatId, text)
   }
 

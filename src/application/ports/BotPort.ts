@@ -4,8 +4,8 @@
  * application 層用此介面，不關心底層 SDK 或協定。
  */
 export interface BotPort {
-  /** 對 TC 端推送一則訊息（>4096 字由呼叫端負責分段）。 */
-  push(text: string): Promise<void>
+  /** 對 TC 端送一則訊息（>4096 字由呼叫端負責分段）。 */
+  send(text: string): Promise<void>
 
   /** 註冊 callback；TC 端收到使用者訊息時被呼叫。 */
   onMessage(handler: (text: string) => void): void

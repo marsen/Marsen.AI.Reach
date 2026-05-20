@@ -45,7 +45,7 @@ export class ConversationMirror {
     log.info(`[mirror] Claude→TC: ${text.length} chars`)
     const payload = this.stripUserIfFromTc(text)
     if (!payload) return
-    void this.pushChunked(payload).catch((e: unknown) => log.error('[mirror] pushChunked failed', e))
+    void this.sendChunked(payload).catch((e: unknown) => log.error('[mirror] sendChunked failed', e))
   }
 
   // 若 exchange 的 user 行就是最近從 TC forward 過去的問題 → 剝掉 user 行只回 response。
@@ -61,11 +61,11 @@ export class ConversationMirror {
     return lines.slice(userIdx + 1).join('\n').trim()
   }
 
-  private async pushChunked(text: string): Promise<void> {
+  private async sendChunked(text: string): Promise<void> {
     const chunks = this.chunk(text)
     log.debug(`[mirror] push ${chunks.length} chunk(s)`)
     for (const chunk of chunks) {
-      await this.bot.push(chunk)
+      await this.bot.send(chunk)
     }
   }
 
