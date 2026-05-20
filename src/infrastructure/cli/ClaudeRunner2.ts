@@ -7,7 +7,7 @@ import { execSync, spawnSync } from 'child_process'
 import { setTimeout as sleep } from 'timers/promises'
 import { CLIRunner } from '../../application/ports/CLIRunner.js'
 import { ClaudePaneIO } from '../../application/ports/ClaudePaneIO.js'
-import { cleanAnsi, hasPrompt, extractLastExchange, splitExchange } from '../claude/claudeParser.js'
+import { cleanAnsi, hasPrompt, extractLastExchange } from '../claude/claudeParser.js'
 import { CLAUDE_BIN, TMUX_SESSION } from '../../config.js'
 import { log } from '../../logger.js'
 
@@ -80,11 +80,8 @@ export class ClaudeRunner2 implements CLIRunner, ClaudePaneIO {
     const exchange = extractLastExchange(current)
     // 空字串 = 還沒有使用者訊息（剛開 session）；下次再看。lastExchange 初值也是空，自然不會誤觸 emit。
     if (exchange && exchange !== this.lastExchange) {
-      // 拆兩段送：user 訊息一則、Claude 回覆一則，TC 上會是兩個對話泡泡
-      const { user, response } = splitExchange(exchange)
-      log.debug(`[pane] emit exchange (user=${user.length} response=${response.length})`)
-      if (user) for (const h of this.outputHandlers) h(user)
-      if (response) for (const h of this.outputHandlers) h(response)
+      log.debug(`[pane] emit exchange (${exchange.length} chars)`)
+      for (const h of this.outputHandlers) h(exchange)
       this.lastExchange = exchange
     }
     this.stableCount = 0
