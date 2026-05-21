@@ -13,18 +13,11 @@ export class TelegramBot implements ChatPort {
   private static readonly MAX_MESSAGE_LEN = 4096
 
   private readonly bot: Bot
-  private readonly handlers: Array<(text: string) => void> = []
 
   constructor(token: string, private readonly chatId: number) {
     this.bot = new Bot(token)
-    this.bot.on('message:text', (ctx) => {
-      if (ctx.chat.id !== this.chatId) return   // whitelist：只接受指定 chat
-      const text = ctx.message.text
-      for (const h of this.handlers) h(text)
-    })
   }
 
-  // 內部按 MAX_MESSAGE_LEN 分段；目前用字元邊界切，未來需要可改成句末或詞末切
   async send(text: string): Promise<void> {
     const max = TelegramBot.MAX_MESSAGE_LEN
     for (let i = 0; i < text.length; i += max) {
@@ -33,7 +26,14 @@ export class TelegramBot implements ChatPort {
   }
 
   onMessage(handler: (text: string) => void): void {
-    this.handlers.push(handler)
+    // grammY 訂閱「使用者發來的文字訊息」事件；whitelist 過濾非綁定 chat 的訊息
+    this.bot.on('message:text', (ctx) => {
+      if (ctx.chat.id !== this.chatId) {
+        log.debug(`[telegram] ignored message from chat ${ctx.chat.id}`)
+        return
+      }
+      handler(ctx.message.text)
+    })
   }
 
   async start(): Promise<void> {
