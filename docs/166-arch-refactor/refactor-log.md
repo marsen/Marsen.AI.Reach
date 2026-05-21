@@ -149,12 +149,12 @@ Bot ↔ Client 透過 Unix socket 通訊（典型 client-server）。
 | 檔 | 狀態 |
 |---|---|
 | `CLIPaneIO.ts` | ✅ 改名 + 方法名 + 註解通用化 |
-| `BotPort.ts` | ✅ push→send + 去 TC + 4096 下沉到實作 |
+| `ChatPort.ts`（原 `BotPort.ts`） | ✅ 改名 + push→send + 去 TC + 4096 下沉到實作 |
 | `ClaudeRunner2.ts` | 🟡 magic number 抽完；P0（v1 dead code + 改名）/ P2（onMessage side effect、邏輯重複）待 |
-| `TelegramBot.ts` | ⏳ 未開始 |
-| `ConversationMirror.ts` / `.test.ts` | ⏳ 連帶改 `cliIO` / `send`；內部 Claude 字眼待議 |
-| `daemon-entry.ts` | ⏳ 連帶改 `cliPaneIO` |
-| `composition.ts` | 🟡 bot2 階段看過 + 連帶改名 |
+| `TelegramBot.ts` | ✅ 訊息分段下沉 + fire-and-forget `.catch(log)` + onMessage 就地註冊 grammY listener |
+| `ConversationMirror.ts` / `.test.ts` | ✅ `claudeIO` → `cliIO`、`BotPort` → `ChatPort` 連帶改完；內部 `Claude` 字眼待議 |
+| `daemon-entry.ts` | ✅ `cliPaneIO` 連帶改名 |
+| `composition.ts` | ✅ `ChatPort` + `CLIPaneIO` 連帶改名 |
 | `claudeParser.ts` / `logger.ts` / `config.ts` | ⏳ 未開始 |
 
 ### 命名決議
@@ -163,6 +163,7 @@ Bot ↔ Client 透過 Unix socket 通訊（典型 client-server）。
 - 方法名採對話模型：`sendInput`/`onOutput` → `send`/`onMessage`；兩個 port 對稱
 - `BotPort.push` → `BotPort.send`：跟 CLIPaneIO 對稱
 - `BotPort` 介面層去 TC 縮寫；TC/PC 全 codebase 退場排在 **舊 code（`bot.ts`）退場後**（路徑 B 待辦）
+- `BotPort` → `ChatPort`：介面層去 Bot 字眼（89fd328）
 
 ## 待續
 
