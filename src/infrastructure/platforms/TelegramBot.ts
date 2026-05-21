@@ -6,6 +6,7 @@
  */
 import { Bot } from 'grammy'
 import type { ChatPort } from '../../application/ports/ChatPort.js'
+import { log } from '../../logger.js'
 
 export class TelegramBot implements ChatPort {
   private readonly bot: Bot
@@ -34,6 +35,7 @@ export class TelegramBot implements ChatPort {
     await this.bot.init()
     // drop_pending_updates：跳過 bot 離線時積壓的訊息，避免重啟後一次倒進來
     void this.bot.start({ drop_pending_updates: true })
+      .catch((e) => log.error('[telegram] polling failed', e))
   }
 
   async stop(): Promise<void> {

@@ -97,6 +97,23 @@ if (text.length > TELEGRAM_MAX_LEN) split(text)
 - 值需從環境取 → `const x = process.env.X` 後**顯式檢查**：`if (!x) throw new Error('X not set')`
 - 還沒決定來源 → 先寫死，等需要再改
 
+### Fire-and-forget Promise 必須 `.catch(log)`
+
+用 `void`、不 `await` 的長壽 Promise（polling、subscribe、watcher 等），若中途 reject 沒人接，error 會被完全吞掉——服務已死但 log 沒記、健康檢查還回正常，問題排查無從下手。
+
+```ts
+// ❌ 不行
+void this.bot.start({ drop_pending_updates: true })
+
+// ✅ OK
+void this.bot.start({ drop_pending_updates: true })
+  .catch((e) => log.error('[telegram] polling failed', e))
+```
+
+- 任何 `void promise` / 沒 `await` 的長壽 Promise 都要加 `.catch`
+- catch 內至少 `log.error`，至於要不要重啟、上報、退出 process 視情境決定
+- 一次性短 Promise（`fs.writeFile` 寫個 log）可豁免——拋上去也沒人接，但反正不是 silent 死服務
+
 ## Git 工作流程
 
 ### 分支命名
