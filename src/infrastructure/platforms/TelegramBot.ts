@@ -1,13 +1,13 @@
 /**
- * TelegramBot —— BotPort 的 Telegram 實作（grammY 包裝）。
+ * TelegramBot —— ChatPort 的 Telegram 實作（grammY 包裝）。
  *
  * 用 long-polling，本機/不開 webhook 即可跑。
- * 單一使用者：建構時帶 chatId，所有 push 推到此 chat、所有來訊只接受此 chat。
+ * 單一使用者：建構時帶 chatId，所有訊息只送 / 收這個 chat。
  */
 import { Bot } from 'grammy'
-import type { BotPort } from '../../application/ports/BotPort.js'
+import type { ChatPort } from '../../application/ports/ChatPort.js'
 
-export class TelegramBot implements BotPort {
+export class TelegramBot implements ChatPort {
   private readonly bot: Bot
   private readonly handlers: Array<(text: string) => void> = []
 

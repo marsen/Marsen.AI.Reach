@@ -1,4 +1,4 @@
-import type { BotPort } from '../ports/BotPort.js'
+import type { ChatPort } from '../ports/ChatPort.js'
 import type { CLIPaneIO } from '../ports/CLIPaneIO.js'
 import { log } from '../../logger.js'
 
@@ -20,7 +20,7 @@ export class ConversationMirror {
   private lastTcInput: string | null = null
 
   constructor(
-    private readonly bot: BotPort,
+    private readonly bot: ChatPort,
     private readonly cliIO: CLIPaneIO,
   ) {}
 
