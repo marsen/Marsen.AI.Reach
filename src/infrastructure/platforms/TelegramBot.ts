@@ -9,6 +9,9 @@ import type { ChatPort } from '../../application/ports/ChatPort.js'
 import { log } from '../../logger.js'
 
 export class TelegramBot implements ChatPort {
+  // Telegram 單則訊息字元上限；超過 API 會拒絕，send 內自動分段
+  private static readonly MAX_MESSAGE_LEN = 4096
+
   private readonly bot: Bot
   private readonly handlers: Array<(text: string) => void> = []
 
@@ -21,9 +24,12 @@ export class TelegramBot implements ChatPort {
     })
   }
 
-  // Telegram 單則訊息上限 4096 字元；超過會被 API 拒絕，呼叫端需自行分段
+  // 內部按 MAX_MESSAGE_LEN 分段；目前用字元邊界切，未來需要可改成句末或詞末切
   async send(text: string): Promise<void> {
-    await this.bot.api.sendMessage(this.chatId, text)
+    const max = TelegramBot.MAX_MESSAGE_LEN
+    for (let i = 0; i < text.length; i += max) {
+      await this.bot.api.sendMessage(this.chatId, text.slice(i, i + max))
+    }
   }
 
   onMessage(handler: (text: string) => void): void {

@@ -62,7 +62,7 @@ describe('ConversationMirror', () => {
     expect(bot.send).toHaveBeenCalledWith('Claude says hi')
   })
 
-  it('Claude 輸出超過 4096 字元 → 分段 push', async () => {
+  it('Claude 輸出超大字串 → 整段交給 bot.send（分段由 adapter 處理）', async () => {
     const mirror = new ConversationMirror(bot, cliIO)
     await mirror.start()
 
@@ -70,12 +70,10 @@ describe('ConversationMirror', () => {
     const fromClaude = lastHandler(cliIO.onMessage)
     fromClaude(text5000)
 
-    // 等所有 push 完成
     await new Promise((r) => setImmediate(r))
 
-    expect(bot.send).toHaveBeenCalledTimes(2)
-    expect(vi.mocked(bot.send).mock.calls[0][0]).toHaveLength(4096)
-    expect(vi.mocked(bot.send).mock.calls[1][0]).toHaveLength(5000 - 4096)
+    expect(bot.send).toHaveBeenCalledTimes(1)
+    expect(vi.mocked(bot.send).mock.calls[0][0]).toBe(text5000)
   })
 
   it('TC 來源的問題 → Claude emit exchange 時剝掉 user 行，只 push response', async () => {

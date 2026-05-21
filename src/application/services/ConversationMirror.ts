@@ -12,9 +12,6 @@ import { log } from '../../logger.js'
  * 純 application 邏輯，只依賴 port，無 I/O。
  */
 export class ConversationMirror {
-  // Telegram 單則訊息字元上限（LINE 也類似量級，先用 Telegram 規格）
-  private static readonly TELEGRAM_MAX_LEN = 4096
-
   // 記最近一則「TC → Claude」的問題；下一次 Claude emit exchange 命中即剝掉 user 行
   // 避免 TC 重複看到自己剛剛送出的問題。多輪 race 沒處理（使用者通常不會連發）。
   private lastTcInput: string | null = null
@@ -45,7 +42,8 @@ export class ConversationMirror {
     log.info(`[mirror] Claude→TC: ${text.length} chars`)
     const payload = this.stripUserIfFromTc(text)
     if (!payload) return
-    void this.sendChunked(payload).catch((e: unknown) => log.error('[mirror] sendChunked failed', e))
+    // bot.send 內部處理平台訊息上限分段，mirror 不關心
+    void this.bot.send(payload).catch((e: unknown) => log.error('[mirror] bot.send failed', e))
   }
 
   // 若 exchange 的 user 行就是最近從 TC forward 過去的問題 → 剝掉 user 行只回 response。
@@ -61,21 +59,4 @@ export class ConversationMirror {
     return lines.slice(userIdx + 1).join('\n').trim()
   }
 
-  private async sendChunked(text: string): Promise<void> {
-    const chunks = this.chunk(text)
-    log.debug(`[mirror] push ${chunks.length} chunk(s)`)
-    for (const chunk of chunks) {
-      await this.bot.send(chunk)
-    }
-  }
-
-  // 按 Telegram 上限分段；目前用字元邊界切，未來需要可改成句末或詞末切
-  private chunk(text: string): string[] {
-    const max = ConversationMirror.TELEGRAM_MAX_LEN
-    const result: string[] = []
-    for (let i = 0; i < text.length; i += max) {
-      result.push(text.slice(i, i + max))
-    }
-    return result
-  }
 }
