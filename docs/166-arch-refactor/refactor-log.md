@@ -170,3 +170,4 @@ Bot ↔ Client 透過 Unix socket 通訊（典型 client-server）。
 - `bot.ts` / `TmuxClaudeAdapter` / `presentation/platforms/*` 等舊 code 退場
 - 退場後再做：TC/PC 縮寫全 codebase 退場、`presentation/` → `infrastructure/` 遷移（依新 conventions）
 - `conventions.md` Q1 / Q2 拍板（composition.ts 與 daemon-entry.ts 歸屬，截止 2026-05-22）
+- `ClaudeRunner2.tmux()` 用 `execSync` 預設 `stderr: 'inherit'`，tmux session 不存在時 polling 把 `no server running` 噴到 console；改 `stdio: ['pipe', 'pipe', 'pipe']` 或 `pollOnce` 內加 `sessionExists()` 早退（低優先）
