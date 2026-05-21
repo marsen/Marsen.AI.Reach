@@ -171,3 +171,4 @@ Bot ↔ Client 透過 Unix socket 通訊（典型 client-server）。
 - 退場後再做：TC/PC 縮寫全 codebase 退場、`presentation/` → `infrastructure/` 遷移（依新 conventions）
 - `conventions.md` Q1 / Q2 拍板（composition.ts 與 daemon-entry.ts 歸屬，截止 2026-05-22）
 - `ClaudeRunner2.tmux()` 用 `execSync` 預設 `stderr: 'inherit'`，tmux session 不存在時 polling 把 `no server running` 噴到 console；改 `stdio: ['pipe', 'pipe', 'pipe']` 或 `pollOnce` 內加 `sessionExists()` 早退（低優先）
+- **application service 是否進 composition / 提供 factory（稍後優先處理）**：`ConversationMirror` / `Daemon` 等 service 目前 `daemon-entry` 自己 new，跟 port-adapter 都在 composition 不對稱。usage 不足先記（只有 1-2 個 service），等更多 service 出現再決定要不要把 wiring 集中到 composition
