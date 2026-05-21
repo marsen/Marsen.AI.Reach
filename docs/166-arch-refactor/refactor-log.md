@@ -44,8 +44,8 @@ bot2 是新架構平行實驗（DDD/Hexagonal），目前只完成 1/12 項，�
 
 | 類別 | bot | bot2 | 主要依賴 |
 |---|---|---|---|
-| **啟動 Claude（new session）** | ✓ | ✓ | `ClaudeRunner`、tmux、`claudeParser`（hasPrompt / cleanAnsi）|
-| Session resume | ✓ | ✗ | `sessionExists()`、`isClaudeRunning()`（pgrep）|
+| **啟動 Claude（new session）** | ✓ | ✓ | `ClaudeRunner`、tmux、`claudeParser`（hasPrompt / cleanAnsi） |
+| Session resume | ✓ | ✗ | `sessionExists()`、`isClaudeRunning()`（pgrep） |
 | Platform adapter | ✓ | ✗ | `LineAdapter` / `TelegramAdapter`、`PLATFORM` env、`AdapterDeps` |
 | Send message | ✓ | ✗ | `SendMessageUseCase`、`Session` entity、`ClaudePort.run`、tmux send-keys |
 | Watcher | ✓ | ✗ | `Watcher` 類別、`WatcherPort`、`capturePane` |
@@ -120,8 +120,53 @@ Bot ↔ Client 透過 Unix socket 通訊（典型 client-server）。
 - 換回直觀（一個 class、一個 start/close 動作）
 - 未來真需要切換，再回頭抽 port
 
+## 進度（2026-05-20）
+
+### A 路徑（PC 端閉環）— 完成
+
+- `BotConnection` port + `UnixSocketBotConnection` adapter
+- `bot2.ts` 改寫為 daemon spawn + 互動 client
+- `isAlive()` 從 `info()` 拆出來，純連線探測（不送命令）
+- `Daemon.dispatch` 落實 info / start 命令
+
+### B 路徑（TC 接通）— 主體完成
+
+| 新增 | 角色 |
+|---|---|
+| `CLIPaneIO` (port) | 互動式 CLI 雙向通訊（`send` / `onMessage`） |
+| `BotPort` (port) | 對話 bot 平台抽象 |
+| `ClaudeRunner2` (adapter) | 同時實作 `CLIRunner` + `CLIPaneIO` |
+| `TelegramBot` (adapter) | `BotPort` 的 Telegram 實作（grammY） |
+| `ConversationMirror` (service) | TC ↔ CLI 雙向 mirror |
+| `claudeParser.extractLastExchange` | 抽取最後一輪對話對（去 banner / cook timer / 輸入框） |
+| `logger.ts` | 集中 logger |
+| `config.ts` | 集中常數（SOCKET_PATH / TMUX_SESSION / CLAUDE_BIN） |
+
+**移除**：`Watcher` / `WatcherPort` / `Watcher.test`（被 `ConversationMirror` + `ClaudeRunner2.onMessage` 取代）
+
+### Code Review 進度
+
+| 檔 | 狀態 |
+|---|---|
+| `CLIPaneIO.ts` | ✅ 改名 + 方法名 + 註解通用化 |
+| `BotPort.ts` | ✅ push→send + 去 TC + 4096 下沉到實作 |
+| `ClaudeRunner2.ts` | 🟡 magic number 抽完；P0（v1 dead code + 改名）/ P2（onMessage side effect、邏輯重複）待 |
+| `TelegramBot.ts` | ⏳ 未開始 |
+| `ConversationMirror.ts` / `.test.ts` | ⏳ 連帶改 `cliIO` / `send`；內部 Claude 字眼待議 |
+| `daemon-entry.ts` | ⏳ 連帶改 `cliPaneIO` |
+| `composition.ts` | 🟡 bot2 階段看過 + 連帶改名 |
+| `claudeParser.ts` / `logger.ts` / `config.ts` | ⏳ 未開始 |
+
+### 命名決議
+
+- `ClaudePaneIO` → `CLIPaneIO`：介面層不綁特定 CLI（claude / gemini / codex 都可實作）
+- 方法名採對話模型：`sendInput`/`onOutput` → `send`/`onMessage`；兩個 port 對稱
+- `BotPort.push` → `BotPort.send`：跟 CLIPaneIO 對稱
+- `BotPort` 介面層去 TC 縮寫；TC/PC 全 codebase 退場排在 **舊 code（`bot.ts`）退場後**（路徑 B 待辦）
+
 ## 待續
 
-- `Daemon.dispatch` 內目前 echo placeholder，info / start 命令邏輯待從 bot.ts 抄入
-- `BotConnection` (client 端 port) 跟 `UnixSocketBotConnection` 還沒寫
-- bot2.ts 還沒寫成「使用者入口 + spawn daemon + 互動」
+- `ClaudeRunner2` P0：v1 dead code 砍 + v2 → ClaudeRunner（暫不處理，等舊 code 一起清）
+- `bot.ts` / `TmuxClaudeAdapter` / `presentation/platforms/*` 等舊 code 退場
+- 退場後再做：TC/PC 縮寫全 codebase 退場、`presentation/` → `infrastructure/` 遷移（依新 conventions）
+- `conventions.md` Q1 / Q2 拍板（composition.ts 與 daemon-entry.ts 歸屬，截止 2026-05-22）
