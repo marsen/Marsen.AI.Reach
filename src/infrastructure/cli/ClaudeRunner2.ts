@@ -5,6 +5,9 @@
  */
 import { execSync, spawnSync } from 'child_process'
 import { setTimeout as sleep } from 'timers/promises'
+import { mkdirSync, writeFileSync } from 'fs'
+import { homedir } from 'os'
+import { join } from 'path'
 import { CLIRunner } from '../../application/ports/CLIRunner.js'
 import { CLIPaneIO } from '../../application/ports/CLIPaneIO.js'
 import { cleanAnsi, hasPrompt, extractLastExchange } from '../claude/claudeParser.js'
@@ -86,10 +89,24 @@ export class ClaudeRunner2 implements CLIRunner, CLIPaneIO {
     // 空字串 = 還沒有使用者訊息（剛開 session）；下次再看。lastExchange 初值也是空，自然不會誤觸 emit。
     if (exchange && exchange !== this.lastExchange) {
       log.debug(`[pane] emit exchange (${exchange.length} chars)`)
+      this.dumpEmit(current, exchange) // TODO #166-debug: 暫時診斷 3 連 emit
       for (const h of this.outputHandlers) h(exchange)
       this.lastExchange = exchange
     }
     this.stableCount = 0
+  }
+
+  // TODO #166-debug: 暫時診斷碼，找完 3 連 emit 根因後移除
+  private dumpEmit(cleanedPane: string, exchange: string): void {
+    try {
+      const dir = join(homedir(), '.rai', 'logs', 'pane-dumps')
+      mkdirSync(dir, { recursive: true })
+      const ts = new Date().toISOString().replace(/[:.]/g, '-')
+      const body = `=== CLEANED PANE (${cleanedPane.length} chars) ===\n${cleanedPane}\n=== EXCHANGE (${exchange.length} chars) ===\n${exchange}\n`
+      writeFileSync(join(dir, `${ts}.txt`), body)
+    } catch (e) {
+      log.error('[pane-dump] failed', e)
+    }
   }
 
   private async createSession(workDir: string): Promise<void> {
