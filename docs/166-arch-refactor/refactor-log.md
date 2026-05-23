@@ -173,3 +173,5 @@ Bot ↔ Client 透過 Unix socket 通訊（典型 client-server）。
 - `conventions.md` Q1 / Q2 拍板（composition.ts 與 daemon-entry.ts 歸屬，截止 2026-05-22）
 - `ClaudeRunner2.tmux()` 用 `execSync` 預設 `stderr: 'inherit'`，tmux session 不存在時 polling 把 `no server running` 噴到 console；改 `stdio: ['pipe', 'pipe', 'pipe']` 或 `pollOnce` 內加 `sessionExists()` 早退（低優先）
 - **application service 是否進 composition / 提供 factory（稍後優先處理）**：`ConversationMirror` / `Daemon` 等 service 目前 `daemon-entry` 自己 new，跟 port-adapter 都在 composition 不對稱。usage 不足先記（只有 1-2 個 service），等更多 service 出現再決定要不要把 wiring 集中到 composition
+- **舊 code 退場後**：把 `claudeParser` 整進 `ClaudeRunner2.ts`（同檔 file-scope function），刪 `claudeParser.ts` + `.test.ts`；`CLAUDE_BIN` 常數 inline 到 Runner 內。`config.ts` 只留 daemon ↔ client 共用契約值（`TMUX_SESSION` / `SOCKET_PATH`）
+- **ConversationMirror 不合進 TelegramBot**：逐段拆解後內無 Telegram-specific 邏輯，剝 user 行決策是線性 chat 通用特性；唯一非通用是 `❯ ` 偵測（Claude CLI 規格），未來該下沉到 `CLIPaneIO` adapter 讓 emit 已結構化（2026-05-23 結論）
