@@ -1,6 +1,6 @@
 /**
- * 簡易測試工具：interactive 送命令給 bot2 daemon、印回應。
- * 使用：npx tsx scripts/bot2-cli.ts
+ * 簡易測試工具：interactive 送命令給 bot daemon、印回應。
+ * 使用：npx tsx scripts/bot-cli.ts
  */
 import { createConnection } from 'net'
 import { homedir } from 'os'
@@ -8,7 +8,7 @@ import { join } from 'path'
 import process from 'process'
 import readline from 'readline'
 
-const SOCKET = join(homedir(), '.rai', 'bot2.sock')
+const SOCKET = join(homedir(), '.rai', 'bot.sock')
 
 function send(cmd: string): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -22,7 +22,7 @@ function send(cmd: string): Promise<string> {
 }
 
 const rl = readline.createInterface({ input: process.stdin, output: process.stdout })
-console.log(`bot2-cli ─ 連 ${SOCKET}`)
+console.log(`bot-cli ─ 連 ${SOCKET}`)
 console.log('輸入命令送出，例如：info、start:/tmp（Ctrl+C 結束）')
 rl.setPrompt('→ ')
 rl.prompt()

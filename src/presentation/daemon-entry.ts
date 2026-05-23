@@ -1,7 +1,7 @@
 /**
  * daemon-entry.ts — Bot daemon 進程的入口。
  *
- * 由 bot2 spawn 為 detached 子進程，常駐 listen socket + 跑 chat mirror。
+ * 由 bot spawn 為 detached 子進程，常駐 listen socket + 跑 chat mirror。
  * 不是給使用者直接跑的。
  */
 import { cliRunner, cliPaneIO, botConnection, bot } from '../composition.js'

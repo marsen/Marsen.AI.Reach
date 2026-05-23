@@ -6,5 +6,5 @@ import { homedir } from 'os'
 import { join } from 'path'
 
 export const CLAUDE_BIN = 'claude'
-export const SOCKET_PATH = join(homedir(), '.rai', 'bot2.sock')
+export const SOCKET_PATH = join(homedir(), '.rai', 'bot.sock')
 export const TMUX_SESSION = 'claude-reach'

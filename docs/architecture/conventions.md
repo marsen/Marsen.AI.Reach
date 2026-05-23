@@ -21,7 +21,7 @@ src/
 │   ├── platforms/       # 例：LineAdapter、TelegramAdapter
 │   └── config/          # 環境變數讀取
 ├── composition.ts       # Port → Adapter mapping（位置待討論，見下）
-└── (root)               # main entry：bot2.ts 等
+└── (root)               # main entry：bot.ts 等
 ```
 
 ### 依賴鐵則
@@ -56,13 +56,13 @@ Hex 原本區分 driving adapter（input）/ driven adapter（output），實作
 
 #### Q2：daemon-entry.ts 放哪？
 
-- bot2.ts = 使用者**主動執行**的 entry（像 `main`）→ 共識放根層
-- daemon-entry.ts = 被 bot2 **spawn 出來**的內部 entry → 角色不同，放根層感覺怪
+- bot.ts = 使用者**主動執行**的 entry（像 `main`）→ 共識放根層
+- daemon-entry.ts = 被 bot **spawn 出來**的內部 entry → 角色不同，放根層感覺怪
 
 選項：
 
 - A. 都放根（一致）
-- B. bot2 放根、daemon-entry 進 `infrastructure/`（例如 `infrastructure/daemon/daemon-entry.ts`）
+- B. bot 放根、daemon-entry 進 `infrastructure/`（例如 `infrastructure/daemon/daemon-entry.ts`）
 - C. 開 `bootstrap/` 資料夾，兩個都進去
 
 ---

@@ -1,5 +1,5 @@
 /**
- * bot2.ts —— 使用者進入點（PC 端互動工具）
+ * bot.ts —— 使用者進入點（PC 端互動工具）
  *
  * 1. 檢查 daemon 在不在跑（試連 socket）
  * 2. 沒在跑就 detached spawn 一個 daemon-entry 進程
@@ -78,10 +78,10 @@ async function spawnDaemon(): Promise<void> {
   await waitForDaemonReady()
 }
 
-/** fork daemon-entry 成獨立 background process；三件套讓它脫離 bot2 生命週期 */
+/** fork daemon-entry 成獨立 background process；三件套讓它脫離 bot 生命週期 */
 function forkDaemon(): void {
   const daemonEntry = join(dirname(fileURLToPath(import.meta.url)), 'daemon-entry.ts')
-  // detached + stdio:'ignore' + unref() 三件一組：讓 daemon 脫離本 process，bot2 結束後繼續活著
+  // detached + stdio:'ignore' + unref() 三件一組：讓 daemon 脫離本 process，bot 結束後繼續活著
   const child = spawn(
     process.argv[0],
     [...process.execArgv, daemonEntry],
