@@ -38,14 +38,14 @@ describe('ConversationMirror', () => {
     expect(bot.start).toHaveBeenCalledTimes(1)
   })
 
-  it('TC 訊息 → 呼叫 cliIO.send', async () => {
+  it('chat 訊息 → 呼叫 cliIO.send', async () => {
     const mirror = new ConversationMirror(bot, cliIO)
     await mirror.start()
 
     const fromBot = lastHandler(bot.onMessage)
-    fromBot('hello from TC')
+    fromBot('hello from chat')
 
-    expect(cliIO.send).toHaveBeenCalledWith('hello from TC')
+    expect(cliIO.send).toHaveBeenCalledWith('hello from chat')
   })
 
   it('Claude 新輸出 → 呼叫 bot.send', async () => {
@@ -76,11 +76,11 @@ describe('ConversationMirror', () => {
     expect(vi.mocked(bot.send).mock.calls[0][0]).toBe(text5000)
   })
 
-  it('TC 來源的問題 → Claude emit exchange 時剝掉 user 行，只 push response', async () => {
+  it('chat 來源的問題 → Claude emit exchange 時剝掉 user 行，只 push response', async () => {
     const mirror = new ConversationMirror(bot, cliIO)
     await mirror.start()
 
-    // TC 送進來 "123"
+    // chat 送進來 "123"
     const fromBot = lastHandler(bot.onMessage)
     fromBot('123')
 
@@ -94,11 +94,11 @@ describe('ConversationMirror', () => {
     expect(vi.mocked(bot.send).mock.calls[0][0]).toBe('收到，請問需要做什麼？')
   })
 
-  it('PC 來源的問題（沒走過 TC）→ push 整段含 user 行', async () => {
+  it('host 來源的問題（沒走過 chat）→ push 整段含 user 行', async () => {
     const mirror = new ConversationMirror(bot, cliIO)
     await mirror.start()
 
-    // 沒有 TC onMessage，直接 Claude 端冒出 exchange
+    // 沒有 chat onMessage，直接 Claude 端冒出 exchange
     const fromClaude = lastHandler(cliIO.onMessage)
     fromClaude('❯ 123\n\n收到，請問需要做什麼？')
 
@@ -108,7 +108,7 @@ describe('ConversationMirror', () => {
     expect(vi.mocked(bot.send).mock.calls[0][0]).toBe('❯ 123\n\n收到，請問需要做什麼？')
   })
 
-  it('TC 來源剝完 → 下一輪（PC 來源）回到整段模式', async () => {
+  it('chat 來源剝完 → 下一輪（host 來源）回到整段模式', async () => {
     const mirror = new ConversationMirror(bot, cliIO)
     await mirror.start()
 
@@ -119,7 +119,7 @@ describe('ConversationMirror', () => {
     fromClaude('❯ 123\n\n回應 A')
     await new Promise((r) => setImmediate(r))
 
-    // 下一輪沒走 TC（PC 端打字）
+    // 下一輪沒走 chat（host 端打字）
     fromClaude('❯ 456\n\n回應 B')
     await new Promise((r) => setImmediate(r))
 
