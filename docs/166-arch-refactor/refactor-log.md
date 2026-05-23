@@ -165,6 +165,24 @@ Bot ↔ Client 透過 Unix socket 通訊（典型 client-server）。
 - `BotPort` 介面層去 TC 縮寫；TC/PC 全 codebase 退場排在 **舊 code（`bot.ts`）退場後**（路徑 B 待辦）
 - `BotPort` → `ChatPort`：介面層去 Bot 字眼（89fd328）
 
+## 重啟檢查點（2026-05-23）
+
+⚠️ 累積以下 commit 自從 daemon 上次啟動後尚未生效，**下次重啟才會載入**：
+
+| commit | 內容 | 影響 |
+|---|---|---|
+| `0d9d6c9` | pane dump diagnostic | **仍在**：每次 emit 寫 `~/.rai/logs/pane-dumps/<ts>.txt`，等 3 連 emit 重現後 diff |
+| `ad51456` | TelegramBot 自讀 env | dotenv 載入時機從 daemon-entry 改為 TelegramBot.ts 檔頂 |
+| `6d392a3` | 舊 bot.ts 流程全刪 | -1074 行；功能流失：SessionLogger / push 通知 / SIGUSR1 / Express HTTP server |
+| `4eb6b7f` | Mirror 註解 + 結論存檔 | doc only |
+| `8e87a91` | 舊架構文件刪除 | doc only |
+| `574ff5a` | ClaudeRunner2 → ClaudeRunner | rename |
+
+重啟步驟：`kill <daemon PID>` → `rai`
+重啟後驗證：`rai status` + Telegram 發一句測試對話接回。
+
+---
+
 ## 進度（2026-05-23）
 
 舊 bot.ts 流程整套退場（commit `6d392a3`）：刪 `bot.ts` / `TmuxClaudeAdapter` / `ClaudeRunner` v1 / `presentation/platforms/*` / use-cases / domain / SessionLogger / 舊 env helper。連帶刪 `docs/architecture/architecture.md` + `modules.md`（描述舊架構），README / CLAUDE.md surgical edit。
