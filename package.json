@@ -11,23 +11,18 @@
     "src/"
   ],
   "scripts": {
-    "bot": "tsx src/presentation/bot.ts",
     "test": "vitest run",
     "test:watch": "vitest",
     "prepare": "husky"
   },
   "dependencies": {
     "@inquirer/prompts": "^8.3.2",
-    "@line/bot-sdk": "^10.6.0",
     "dotenv": "^16.4.0",
-    "express": "^5.2.1",
     "grammy": "^1.41.1",
-    "node-pty": "^1.0.0",
     "strip-ansi": "^7.1.0",
     "tsx": "^4.19.0"
   },
   "devDependencies": {
-    "@types/express": "^5.0.6",
     "@types/node": "^22.19.19",
     "husky": "^9.1.7",
     "typescript": "^5.7.0",
