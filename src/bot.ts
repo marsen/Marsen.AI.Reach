@@ -1,5 +1,5 @@
 /**
- * bot.ts —— 使用者進入點（PC 端互動工具）
+ * bot.ts —— 使用者進入點（host 端互動工具）
  *
  * 1. 檢查 daemon 在不在跑（試連 socket）
  * 2. 沒在跑就 detached spawn 一個 daemon-entry 進程
@@ -11,8 +11,8 @@ import { fileURLToPath } from 'url'
 import { dirname, join } from 'path'
 import { setTimeout as sleep } from 'timers/promises'
 import { select } from '@inquirer/prompts'
-import { botConnection } from '../composition.js'
-import { TMUX_SESSION } from '../config.js'
+import { botConnection } from './composition.js'
+import { TMUX_SESSION } from './config.js'
 
 /** 進入點：確保 daemon 在跑 → 顯示狀態 → 互動選擇 → 派工 → 接管 terminal */
 async function main(): Promise<void> {

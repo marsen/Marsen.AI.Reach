@@ -4,10 +4,10 @@
  * 由 bot spawn 為 detached 子進程，常駐 listen socket + 跑 chat mirror。
  * 不是給使用者直接跑的。
  */
-import { cliRunner, cliPaneIO, botConnection, bot } from '../composition.js'
-import { Daemon } from '../application/Daemon.js'
-import { ConversationMirror } from '../application/services/ConversationMirror.js'
-import { log } from '../logger.js'
+import { cliRunner, cliPaneIO, botConnection, bot } from './composition.js'
+import { Daemon } from './application/Daemon.js'
+import { ConversationMirror } from './application/services/ConversationMirror.js'
+import { log } from './logger.js'
 
 // 防呆：若已有 daemon 在跑就退出，避免兩個 daemon 競爭同一個 socket 檔
 if (await botConnection.isAlive()) {

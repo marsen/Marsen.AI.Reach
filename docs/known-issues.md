@@ -40,7 +40,7 @@ if (session.isActive() && !claude.isRunning()) {
 
 ### 需要決定的事
 
-- **狀態同步邏輯放哪一層**？目前在 `presentation/bot.ts`，可能應抽到 application 或 domain
+- **狀態同步邏輯放哪一層**？目前在 `bot.ts`，可能應抽到 application 或 domain
 - **是否做雙向同步**？反方向 recovery（`inactive` 但 tmux+Claude 還在 → `session.start()` + `startWatcher()`）
 - **觸發時機**：socket 命令？`SendMessage` 前？背景輪詢？
 - **Source of truth 選擇**：把 tmux 當權威，每次都查；還是維持進程內快取、定期同步

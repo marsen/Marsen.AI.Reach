@@ -192,10 +192,21 @@ Bot ↔ Client 透過 Unix socket 通訊（典型 client-server）。
 - TC/PC 縮寫全 codebase 退場、`presentation/` → `infrastructure/` 遷移
 - `claudeParser` 整進 Runner、`CLAUDE_BIN` inline、`config.ts` 瘦身
 
+## 進度（2026-05-23）續
+
+`presentation/` 淨空：`git mv` `bot.ts`、`daemon-entry.ts` → 根層 `src/`，`rmdir src/presentation`。imports `../` → `./`；`forkDaemon()` 用相對自身位置算 daemon-entry 路徑，兩檔同搬根層仍正確，無須改。Q1/Q2 暫緩（使用者「之後再說」）→ composition 維持根層，兩 entry 也落根層（= Q2 選項 A，可逆）。
+
+連帶：
+- launchd plist `~/Library/LaunchAgents/com.marsen.rai.plist` 的 `bot.ts` 路徑同步更新（`presentation/bot.ts` → `bot.ts`）
+- bot.ts 標頭 `PC 端` → `host 端`（順手清；TC/PC 全面退場仍在待續）
+- docs surgical edit：`known-issues.md`、`conventions.md`（Q1/Q2 改標暫緩 + 註明三檔暫落根層）、`CLAUDE.md`
+
+⚠️ **重啟檢查點**：目前在跑的 daemon 由舊路徑 `src/presentation/daemon-entry.ts` spawn（已不存在但進程記憶體仍跑），下次重啟才會走新路徑。重啟：`kill <daemon PID>` → `rai`。
+
 ## 待續
 
-- TC/PC 縮寫全 codebase 退場、`presentation/` → `infrastructure/` 遷移（依新 conventions）
-- `conventions.md` Q1 / Q2 拍板（composition.ts 與 daemon-entry.ts 歸屬，截止 2026-05-22）
+- TC/PC 縮寫全 codebase 退場（剩 `ConversationMirror.ts` 註解；code identifier 已無）
+- `conventions.md` Q1 / Q2 拍板（composition.ts 與 daemon-entry.ts 歸屬，暫緩）
 - `ClaudeRunner.tmux()` 用 `execSync` 預設 `stderr: 'inherit'`，tmux session 不存在時 polling 把 `no server running` 噴到 console；改 `stdio: ['pipe', 'pipe', 'pipe']` 或 `pollOnce` 內加 `sessionExists()` 早退（低優先）
 - **application service 是否進 composition / 提供 factory（稍後優先處理）**：`ConversationMirror` / `Daemon` 等 service 目前 `daemon-entry` 自己 new，跟 port-adapter 都在 composition 不對稱。usage 不足先記（只有 1-2 個 service），等更多 service 出現再決定要不要把 wiring 集中到 composition
 - `claudeParser` 整進 `ClaudeRunner.ts`（同檔 file-scope function），刪 `claudeParser.ts` + `.test.ts`；`CLAUDE_BIN` 常數 inline 到 Runner 內。`config.ts` 只留 daemon ↔ client 共用契約值（`TMUX_SESSION` / `SOCKET_PATH`）

@@ -14,7 +14,7 @@ Tech: Node.js + TypeScript (ESM) + grammY + @inquirer/prompts
 - [x] 文件建置（README、CLAUDE.md、docs/architecture/）
 - [x] Claude binary 路徑移至 `.env`
 - [x] tmux 架構取代 spawn（session 持久化）
-- [x] CA 分層重構（domain / application / infrastructure / presentation）
+- [x] CA 分層重構（domain / application / infrastructure；entry 落根層，不用 presentation）
 - [x] Bug：ensureSession() 只檢查 tmux session 存在，未確認 claude process 仍在運行
 - [x] Unix socket 取代 PID file（IPC）
 - [x] rai CLI 工具（多專案、單實例防呆）

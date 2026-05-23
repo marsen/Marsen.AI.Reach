@@ -45,7 +45,9 @@ src/
 
 Hex 原本區分 driving adapter（input）/ driven adapter（output），實作上兩者都是邊界 adapter，分兩層在後端為主的專案職責重疊。**統一放 `infrastructure/`**，需要時用子資料夾分主題（`claude/`、`platforms/`、`ipc/`、`config/`）即可。
 
-### 待討論項目（截止 2026-05-22）
+### 待討論項目（暫緩，2026-05-23 決定先不拍板）
+
+`presentation/` 已淨空：`bot.ts`、`daemon-entry.ts` 與 `composition.ts` 三者**暫時都落根層 `src/`**，未對下面兩問做架構承諾，要再搬都可逆。
 
 #### Q1：composition.ts 放哪？
 
@@ -61,7 +63,7 @@ Hex 原本區分 driving adapter（input）/ driven adapter（output），實作
 
 選項：
 
-- A. 都放根（一致）
+- A. 都放根（一致，**目前狀態**）
 - B. bot 放根、daemon-entry 進 `infrastructure/`（例如 `infrastructure/daemon/daemon-entry.ts`）
 - C. 開 `bootstrap/` 資料夾，兩個都進去
 
