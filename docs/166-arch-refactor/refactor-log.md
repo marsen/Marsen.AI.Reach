@@ -165,21 +165,26 @@ Bot ↔ Client 透過 Unix socket 通訊（典型 client-server）。
 - `BotPort` 介面層去 TC 縮寫；TC/PC 全 codebase 退場排在 **舊 code（`bot.ts`）退場後**（路徑 B 待辦）
 - `BotPort` → `ChatPort`：介面層去 Bot 字眼（89fd328）
 
-## 重啟檢查點（2026-05-23）
+## 重啟檢查點（2026-05-23 第二批，pending）
 
-⚠️ 累積以下 commit 自從 daemon 上次啟動後尚未生效，**下次重啟才會載入**：
+⚠️ 以下 commit 在 15:21 那次重啟（PID 502，由舊路徑 `src/presentation/daemon-entry.ts` spawn）**之後**才產生，尚未生效：
 
 | commit | 內容 | 影響 |
 |---|---|---|
-| `0d9d6c9` | pane dump diagnostic | **仍在**：每次 emit 寫 `~/.rai/logs/pane-dumps/<ts>.txt`，等 3 連 emit 重現後 diff |
-| `ad51456` | TelegramBot 自讀 env | dotenv 載入時機從 daemon-entry 改為 TelegramBot.ts 檔頂 |
-| `6d392a3` | 舊 bot.ts 流程全刪 | -1074 行；功能流失：SessionLogger / push 通知 / SIGUSR1 / Express HTTP server |
-| `4eb6b7f` | Mirror 註解 + 結論存檔 | doc only |
-| `8e87a91` | 舊架構文件刪除 | doc only |
-| `574ff5a` | ClaudeRunner2 → ClaudeRunner | rename |
+| `7dbcc72` | presentation/ 淨空，entry 落根層 | **關鍵**：`daemon-entry.ts` 移到 `src/`，PID 502 仍從已不存在的舊路徑跑；plist 已改指 `src/bot.ts` |
+| `84f7962` | TC/PC 縮寫全退場 | identifier + log 字串改名（`lastChatInput` / `stripUserIfFromChat` / `chat↔Claude`） |
 
-重啟步驟：`kill <daemon PID>` → `rai`
-重啟後驗證：`rai status` + Telegram 發一句測試對話接回。
+重啟步驟：`kill 502`（或 `pgrep -f daemon-entry`）→ `rai`
+重啟後驗證：`rai status` + Telegram 發一句測試對話接回；log 應出現 `[mirror] chat→Claude` 新字串。
+
+### 已生效（15:21 重啟載入，PID 502）
+
+| commit | 內容 |
+|---|---|
+| `0d9d6c9` | pane dump diagnostic（**仍開著**，每次 emit 寫 `~/.rai/logs/pane-dumps/`，等 3 連 emit 重現後 diff） |
+| `ad51456` | TelegramBot 自讀 env |
+| `6d392a3` | 舊 bot.ts 流程全刪（-1074 行；流失 SessionLogger / push / SIGUSR1 / Express） |
+| `574ff5a` | ClaudeRunner2 → ClaudeRunner |
 
 ---
 
