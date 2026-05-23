@@ -1,10 +1,9 @@
 /**
- * 全專案的環境常數設定。
- * 未來要從環境變數 / 設定檔讀取就改這裡，其他模組不用動。
+ * daemon ↔ client 共用的契約常數（兩端必須一致才能連上同一個 session / socket）。
+ * CLI 專屬設定（如 CLAUDE_BIN）放各自的 adapter，不集中在此。
  */
 import { homedir } from 'os'
 import { join } from 'path'
 
-export const CLAUDE_BIN = 'claude'
 export const SOCKET_PATH = join(homedir(), '.rai', 'bot.sock')
 export const TMUX_SESSION = 'claude-reach'

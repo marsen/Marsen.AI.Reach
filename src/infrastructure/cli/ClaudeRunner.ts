@@ -9,9 +9,60 @@ import { homedir } from 'os'
 import { join } from 'path'
 import { CLIRunner } from '../../application/ports/CLIRunner.js'
 import { CLIPaneIO } from '../../application/ports/CLIPaneIO.js'
-import { cleanAnsi, hasPrompt, extractLastExchange } from '../claude/claudeParser.js'
-import { CLAUDE_BIN, TMUX_SESSION } from '../../config.js'
+import { TMUX_SESSION } from '../../config.js'
 import { log } from '../../logger.js'
+
+// Claude CLI 啟動命令；之後要抽成環境變數 / 設定檔再改這裡
+const CLAUDE_BIN = 'claude'
+
+// === Claude CLI pane 文字解析（純函式，與 tmux/process 無關，可單元測試）===
+
+const PROMPT_RE = /❯[^\n]*\r?\n[-─]+/
+// 比對使用者已送出的訊息（不是底部空白輸入框）：❯ 後接空格再接非空白字
+const USER_INPUT_RE = /❯ [^\s].*/g
+// Claude 「思考中 / 已思考多少秒」的狀態列噪音
+const COOK_TIMER_RE = /^\s*✻ .+$/gm
+// 整行只有橫線（box drawing、半形 dash、全形 dash 等）的裝飾線
+const HORIZONTAL_LINE_RE = /^\s*[─━━－-]{3,}\s*$/gm
+
+function cleanAnsi(s: string): string {
+  return s.replace(/\x1B\[[0-9;]*[a-zA-Z]/g, '')
+}
+
+function hasPrompt(output: string): boolean {
+  return PROMPT_RE.test(output)
+}
+
+/**
+ * 抽取「最後一輪對話」：使用者送出的訊息 + Claude 的回覆，去除 banner、cook timer、輸入框邊線。
+ * 找不到回合（pane 還沒任何使用者訊息）→ 回空字串。
+ * export 供單元測試；ClaudeRunner.pollOnce 內部也用它。
+ */
+export function extractLastExchange(pane: string): string {
+  const clean = cleanAnsi(pane)
+
+  // 找最後一個使用者已送出的訊息
+  let lastMatch: RegExpExecArray | null = null
+  let m: RegExpExecArray | null
+  USER_INPUT_RE.lastIndex = 0
+  while ((m = USER_INPUT_RE.exec(clean)) !== null) lastMatch = m
+  if (!lastMatch) return ''
+
+  // 從這則訊息開始，到下一個輸入框（PROMPT_RE）之前
+  const fromExchange = clean.slice(lastMatch.index)
+  const afterUserInput = fromExchange.slice(lastMatch[0].length)
+  const promptIdx = afterUserInput.search(PROMPT_RE)
+  const exchange = promptIdx === -1
+    ? fromExchange
+    : fromExchange.slice(0, lastMatch[0].length + promptIdx)
+
+  // 去 cook timer、整行裝飾線、收斂多餘空行
+  return exchange
+    .replace(COOK_TIMER_RE, '')
+    .replace(HORIZONTAL_LINE_RE, '')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim()
+}
 
 export class ClaudeRunner implements CLIRunner, CLIPaneIO {
   private static readonly POLL_INTERVAL_MS = 800

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { extractLastExchange } from './claudeParser.js'
+import { extractLastExchange } from './ClaudeRunner.js'
 
 describe('extractLastExchange', () => {
   it('抓最後一輪（user + Claude 回應），去除 cook timer 與輸入框', () => {
@@ -41,4 +41,3 @@ describe('extractLastExchange', () => {
     expect(extractLastExchange(pane)).toBe('')
   })
 })
-
