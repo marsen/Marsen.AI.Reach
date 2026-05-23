@@ -7,12 +7,12 @@ import type { CLIRunner } from './application/ports/CLIRunner.js'
 import type { CLIPaneIO } from './application/ports/CLIPaneIO.js'
 import type { ChatPort } from './application/ports/ChatPort.js'
 import type { BotConnection } from './application/ports/BotConnection.js'
-import { ClaudeRunner2 } from './infrastructure/cli/ClaudeRunner2.js'
+import { ClaudeRunner } from './infrastructure/cli/ClaudeRunner.js'
 import { UnixSocketBotConnection } from './infrastructure/control/UnixSocketBotConnection.js'
 import { TelegramBot } from './infrastructure/platforms/TelegramBot.js'
 
-// ClaudeRunner2 同時實作 CLIRunner + CLIPaneIO，同個 instance 綁兩個 port
-const tmuxClaude = new ClaudeRunner2()
+// ClaudeRunner 同時實作 CLIRunner + CLIPaneIO，同個 instance 綁兩個 port
+const tmuxClaude = new ClaudeRunner()
 
 export const cliRunner: CLIRunner = tmuxClaude
 export const cliPaneIO: CLIPaneIO = tmuxClaude

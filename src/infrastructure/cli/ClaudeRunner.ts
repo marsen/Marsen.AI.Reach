@@ -1,7 +1,6 @@
 /**
- * ClaudeRunner2 —— ClaudeRunner 的下一代，多實作 CLIPaneIO（送輸入 + 訂閱輸出）。
- *
- * 之所以叫 2：為了與舊版並存，B 路徑切換完成 + bot.ts 退場後會 rename 並搬至 infrastructure/claude/。
+ * ClaudeRunner —— CLIRunner + CLIPaneIO 實作：啟動 tmux 內 Claude CLI，
+ * 送輸入（send-keys），訂閱輸出（capture-pane polling）。
  */
 import { execSync, spawnSync } from 'child_process'
 import { setTimeout as sleep } from 'timers/promises'
@@ -14,7 +13,7 @@ import { cleanAnsi, hasPrompt, extractLastExchange } from '../claude/claudeParse
 import { CLAUDE_BIN, TMUX_SESSION } from '../../config.js'
 import { log } from '../../logger.js'
 
-export class ClaudeRunner2 implements CLIRunner, CLIPaneIO {
+export class ClaudeRunner implements CLIRunner, CLIPaneIO {
   private static readonly POLL_INTERVAL_MS = 800
   private static readonly STABLE_POLLS = 3            // 連續同 N 次 capture 視為穩定
   private static readonly STARTUP_TIMEOUT_MS = 60_000
@@ -54,7 +53,7 @@ export class ClaudeRunner2 implements CLIRunner, CLIPaneIO {
   onMessage(handler: (text: string) => void): void {
     this.outputHandlers.push(handler)
     if (!this.pollHandle) {
-      this.pollHandle = setInterval(() => this.pollOnce(), ClaudeRunner2.POLL_INTERVAL_MS)
+      this.pollHandle = setInterval(() => this.pollOnce(), ClaudeRunner.POLL_INTERVAL_MS)
     }
   }
 
@@ -82,7 +81,7 @@ export class ClaudeRunner2 implements CLIRunner, CLIPaneIO {
 
     // 內容跟上次 capture 一樣 → 穩定計數 +1
     this.stableCount++
-    if (this.stableCount < ClaudeRunner2.STABLE_POLLS || !hasPrompt(current)) return
+    if (this.stableCount < ClaudeRunner.STABLE_POLLS || !hasPrompt(current)) return
 
     // 抽出最後一輪「user + Claude 回覆」，去除 banner / cook timer / 輸入框
     const exchange = extractLastExchange(current)
@@ -110,7 +109,7 @@ export class ClaudeRunner2 implements CLIRunner, CLIPaneIO {
   }
 
   private async createSession(workDir: string): Promise<void> {
-    this.tmux(`new-session -d -s ${TMUX_SESSION} -x ${ClaudeRunner2.PANE_WIDTH} -y ${ClaudeRunner2.PANE_HEIGHT}`)
+    this.tmux(`new-session -d -s ${TMUX_SESSION} -x ${ClaudeRunner.PANE_WIDTH} -y ${ClaudeRunner.PANE_HEIGHT}`)
     // 對 workDir 做 shell single-quote escape，避免特殊字元被誤解析
     const safeDir = `'${workDir.replace(/'/g, `'\\''`)}'`
     const launchClaude = `${CLAUDE_BIN} --dangerously-skip-permissions`
@@ -126,7 +125,7 @@ export class ClaudeRunner2 implements CLIRunner, CLIPaneIO {
   }
 
   private capturePane(): string {
-    return this.tmux(`capture-pane -t ${TMUX_SESSION} -p -S -${ClaudeRunner2.SCROLL_BUFFER_LINES}`)
+    return this.tmux(`capture-pane -t ${TMUX_SESSION} -p -S -${ClaudeRunner.SCROLL_BUFFER_LINES}`)
   }
 
   private sessionExists(): boolean {
@@ -144,16 +143,16 @@ export class ClaudeRunner2 implements CLIRunner, CLIPaneIO {
     let last = ''
     let stable = 0
 
-    while (Date.now() - begin < ClaudeRunner2.STARTUP_TIMEOUT_MS) {
+    while (Date.now() - begin < ClaudeRunner.STARTUP_TIMEOUT_MS) {
       const current = cleanAnsi(this.capturePane())
       if (current === last && hasPrompt(current)) {
         stable++
-        if (stable >= ClaudeRunner2.STABLE_POLLS) return
+        if (stable >= ClaudeRunner.STABLE_POLLS) return
       } else {
         stable = 0
       }
       last = current
-      await sleep(ClaudeRunner2.POLL_INTERVAL_MS)
+      await sleep(ClaudeRunner.POLL_INTERVAL_MS)
     }
     throw new Error('Claude 啟動逾時')
   }
