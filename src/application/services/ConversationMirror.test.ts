@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { ConversationMirror } from './ConversationMirror.js'
 import type { ChatPort } from '../ports/ChatPort.js'
 import type { CLIPaneIO } from '../ports/CLIPaneIO.js'
+import type { LogPort } from '../ports/LogPort.js'
 
 const mockBot = (): ChatPort => ({
   send: vi.fn().mockResolvedValue(undefined),
@@ -15,6 +16,8 @@ const mockCLIPaneIO = (): CLIPaneIO => ({
   onMessage: vi.fn(),
 })
 
+const mockLog = (): LogPort => ({ debug: vi.fn(), info: vi.fn(), error: vi.fn() })
+
 // 取得最近一次傳給 mock 函式的第一個參數（通常是 callback）
 const lastHandler = <T extends (...args: never[]) => unknown>(fn: T): Parameters<T>[0] =>
   vi.mocked(fn).mock.calls.at(-1)![0]
@@ -22,14 +25,16 @@ const lastHandler = <T extends (...args: never[]) => unknown>(fn: T): Parameters
 describe('ConversationMirror', () => {
   let bot: ChatPort
   let cliIO: CLIPaneIO
+  let log: LogPort
 
   beforeEach(() => {
     bot = mockBot()
     cliIO = mockCLIPaneIO()
+    log = mockLog()
   })
 
   it('start() 註冊 handlers 並啟動 bot', async () => {
-    const mirror = new ConversationMirror(bot, cliIO)
+    const mirror = new ConversationMirror(bot, cliIO, log)
 
     await mirror.start()
 
@@ -39,7 +44,7 @@ describe('ConversationMirror', () => {
   })
 
   it('chat 訊息 → 呼叫 cliIO.send', async () => {
-    const mirror = new ConversationMirror(bot, cliIO)
+    const mirror = new ConversationMirror(bot, cliIO, log)
     await mirror.start()
 
     const fromBot = lastHandler(bot.onMessage)
@@ -49,7 +54,7 @@ describe('ConversationMirror', () => {
   })
 
   it('Claude 新輸出 → 呼叫 bot.send', async () => {
-    const mirror = new ConversationMirror(bot, cliIO)
+    const mirror = new ConversationMirror(bot, cliIO, log)
     await mirror.start()
 
     const fromClaude = lastHandler(cliIO.onMessage)
@@ -63,7 +68,7 @@ describe('ConversationMirror', () => {
   })
 
   it('Claude 輸出超大字串 → 整段交給 bot.send（分段由 adapter 處理）', async () => {
-    const mirror = new ConversationMirror(bot, cliIO)
+    const mirror = new ConversationMirror(bot, cliIO, log)
     await mirror.start()
 
     const text5000 = 'a'.repeat(5000)
@@ -77,7 +82,7 @@ describe('ConversationMirror', () => {
   })
 
   it('chat 來源的問題 → Claude emit exchange 時剝掉 user 行，只 push response', async () => {
-    const mirror = new ConversationMirror(bot, cliIO)
+    const mirror = new ConversationMirror(bot, cliIO, log)
     await mirror.start()
 
     // chat 送進來 "123"
@@ -95,7 +100,7 @@ describe('ConversationMirror', () => {
   })
 
   it('host 來源的問題（沒走過 chat）→ push 整段含 user 行', async () => {
-    const mirror = new ConversationMirror(bot, cliIO)
+    const mirror = new ConversationMirror(bot, cliIO, log)
     await mirror.start()
 
     // 沒有 chat onMessage，直接 Claude 端冒出 exchange
@@ -109,7 +114,7 @@ describe('ConversationMirror', () => {
   })
 
   it('chat 來源剝完 → 下一輪（host 來源）回到整段模式', async () => {
-    const mirror = new ConversationMirror(bot, cliIO)
+    const mirror = new ConversationMirror(bot, cliIO, log)
     await mirror.start()
 
     const fromBot = lastHandler(bot.onMessage)
@@ -129,7 +134,7 @@ describe('ConversationMirror', () => {
   })
 
   it('stop() 關掉 bot', async () => {
-    const mirror = new ConversationMirror(bot, cliIO)
+    const mirror = new ConversationMirror(bot, cliIO, log)
     await mirror.start()
 
     await mirror.stop()

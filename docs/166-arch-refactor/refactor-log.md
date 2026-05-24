@@ -208,9 +208,24 @@ Bot ↔ Client 透過 Unix socket 通訊（典型 client-server）。
 
 ⚠️ **重啟檢查點**：目前在跑的 daemon 由舊路徑 `src/presentation/daemon-entry.ts` spawn（已不存在但進程記憶體仍跑），下次重啟才會走新路徑。重啟：`kill <daemon PID>` → `rai`。
 
+## config / logger 歸屬討論（2026-05-24 拍板）
+
+結論：`config`（socket 路徑 / tmux 名）與 `logger`（寫檔 I/O）**都屬 infra**。application 用到時走 **port + 注入**，不直接 import infra（守依賴方向）。
+
+推導過程（討論記錄，避免之後重炒）：
+- 「shared = 丟 infra」是誤區：infra 是最外圈，內層 import 它就是朝外依賴。穩定共用值該往中心，善變細節留 infra 後面包 port。
+- 切斷 app→infra 邊的關鍵是「注入」而非「key-value 形式」：key-value 若仍 import 邊還在；改 `Map<string,string>` 注入雖免寫介面但丟型別安全＋key 變 magic string（踩 conventions），不划算。
+- 「靜態方法」救不了 application：static/全域 import 等於把邊喚回；static 只有 infra→infra 用合法。
+- → 最終選**抽介面（port）**：型別安全、解耦、scaling（建構子 arity 不變）兼得。此時 port **不算 speculative**——它服務「config/logger 屬 infra 且 app 要解耦」這個當下約束，非為假設未來。
+
+**logger 已完成（本 commit）**：`application/ports/LogPort` + `infrastructure/logger.ts`（`log: LogPort`，infra 可直接 import）。`ConversationMirror` 改建構子注入 `LogPort`；infra（`ClaudeRunner`/`TelegramBot`）直接 import 具體 `log`；`daemon-entry` 注入。刪根層 `logger.ts`。
+
+**config（ConfigPort）下一步**：同模式拆。`ConfigPort` 先只放 `socketPath`（app 端只有 `Daemon` 需要；`tmuxSession` 只 infra/entry 用不進 port）；`config.ts` → `infrastructure/config.ts`；`Daemon` 注入 `ConfigPort`。
+
 ## 待續
 
 - ~~TC/PC 縮寫全 codebase 退場~~ ✅ 完成：`ConversationMirror.ts` 註解 + identifier（`lastTcInput`→`lastChatInput`、`stripUserIfFromTc`→`stripUserIfFromChat`、log `TC↔chat`）+ `.test.ts` 描述全清。TC=chat 端、PC=host 端
+- **config → `ConfigPort` + `infrastructure/config.ts`（下一步，模式同 logger）**
 - `conventions.md` Q1 / Q2 拍板（composition.ts 與 daemon-entry.ts 歸屬，暫緩）
 - `ClaudeRunner.tmux()` 用 `execSync` 預設 `stderr: 'inherit'`，tmux session 不存在時 polling 把 `no server running` 噴到 console；改 `stdio: ['pipe', 'pipe', 'pipe']` 或 `pollOnce` 內加 `sessionExists()` 早退（低優先）
 - **application service 是否進 composition / 提供 factory（稍後優先處理）**：`ConversationMirror` / `Daemon` 等 service 目前 `daemon-entry` 自己 new，跟 port-adapter 都在 composition 不對稱。usage 不足先記（只有 1-2 個 service），等更多 service 出現再決定要不要把 wiring 集中到 composition

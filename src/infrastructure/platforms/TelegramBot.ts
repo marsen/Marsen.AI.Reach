@@ -9,7 +9,7 @@ import { homedir } from 'os'
 import { join } from 'path'
 import { Bot } from 'grammy'
 import type { ChatPort } from '../../application/ports/ChatPort.js'
-import { log } from '../../logger.js'
+import { log } from '../logger.js'
 
 // TODO（env config 整體方案待處理）：
 // 現況：composition module-load 時 `new TelegramBot()`，constructor 立刻讀 env，所以

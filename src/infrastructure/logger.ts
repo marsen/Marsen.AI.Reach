@@ -1,14 +1,15 @@
 /**
- * 全專案單一入口 logger（類似 config.ts 的位階）。
+ * LogPort 的具體實作：同時寫檔（~/.rai/logs/daemon.log）與 console。
  *
- * - 同時寫檔（~/.rai/logs/daemon.log）與 console
  * - daemon 被 spawn 為 stdio:'ignore' 時，console 那邊看不到 → 看檔
  * - foreground 直接跑時 → console 跟檔同步
- * - 後續要換成 port/adapter 再升級，介面先固定
+ *
+ * infra 模組可直接 import 這個 `log` 單例（infra→infra）；application 端走 LogPort 注入。
  */
 import { appendFileSync, mkdirSync } from 'fs'
 import { homedir } from 'os'
 import { dirname, join } from 'path'
+import type { LogPort } from '../application/ports/LogPort.js'
 
 const LOG_PATH = join(homedir(), '.rai', 'logs', 'daemon.log')
 
@@ -23,7 +24,7 @@ function write(level: Level, msg: string): void {
   else console.log(line)
 }
 
-export const log = {
+export const log: LogPort = {
   debug: (msg: string): void => write('DEBUG', msg),
   info: (msg: string): void => write('INFO', msg),
   error: (msg: string, e?: unknown): void => {

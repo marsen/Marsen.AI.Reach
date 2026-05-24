@@ -7,7 +7,7 @@
 import { cliRunner, cliPaneIO, botConnection, bot } from './composition.js'
 import { Daemon } from './application/Daemon.js'
 import { ConversationMirror } from './application/services/ConversationMirror.js'
-import { log } from './logger.js'
+import { log } from './infrastructure/logger.js'
 
 // 防呆：若已有 daemon 在跑就退出，避免兩個 daemon 競爭同一個 socket 檔
 if (await botConnection.isAlive()) {
@@ -15,7 +15,7 @@ if (await botConnection.isAlive()) {
   process.exit(0)
 }
 
-const mirror = new ConversationMirror(bot, cliPaneIO)
+const mirror = new ConversationMirror(bot, cliPaneIO, log)
 
 const daemon = new Daemon(cliRunner)
 daemon.start()

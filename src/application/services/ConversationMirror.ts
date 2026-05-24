@@ -1,6 +1,6 @@
 import type { ChatPort } from '../ports/ChatPort.js'
 import type { CLIPaneIO } from '../ports/CLIPaneIO.js'
-import { log } from '../../logger.js'
+import type { LogPort } from '../ports/LogPort.js'
 
 /**
  * ConversationMirror —— 線性 chat ↔ Claude CLI 雙向 relay。
@@ -27,6 +27,7 @@ export class ConversationMirror {
   constructor(
     private readonly bot: ChatPort,
     private readonly cliIO: CLIPaneIO,
+    private readonly log: LogPort,
   ) {}
 
   async start(): Promise<void> {
@@ -40,18 +41,18 @@ export class ConversationMirror {
   }
 
   private forwardToClaude(text: string): void {
-    log.info(`[mirror] chat→Claude: ${text.length} chars`)
+    this.log.info(`[mirror] chat→Claude: ${text.length} chars`)
     this.lastChatInput = text
     // bot 的 onMessage handler 簽名是 sync，這裡 fire-and-forget；失敗只記 log，不中斷 mirror
-    this.cliIO.send(text).catch((e: unknown) => log.error('[mirror] send failed', e))
+    this.cliIO.send(text).catch((e: unknown) => this.log.error('[mirror] send failed', e))
   }
 
   private forwardToBot(text: string): void {
-    log.info(`[mirror] Claude→chat: ${text.length} chars`)
+    this.log.info(`[mirror] Claude→chat: ${text.length} chars`)
     const payload = this.stripUserIfFromChat(text)
     if (!payload) return
     // bot.send 內部處理平台訊息上限分段，mirror 不關心
-    void this.bot.send(payload).catch((e: unknown) => log.error('[mirror] bot.send failed', e))
+    void this.bot.send(payload).catch((e: unknown) => this.log.error('[mirror] bot.send failed', e))
   }
 
   // 若 exchange 的 user 行就是最近從 chat forward 過去的問題 → 剝掉 user 行只回 response。
