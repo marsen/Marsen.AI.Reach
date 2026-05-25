@@ -13,7 +13,7 @@ import { TMUX_SESSION } from '../../config.js'
 import { log } from '../logger.js'
 
 // Claude CLI 啟動命令；之後要抽成環境變數 / 設定檔再改這裡
-const CLAUDE_BIN = 'claude'
+const PREFIX = 'claude'
 
 // === Claude CLI pane 文字解析（純函式，與 tmux/process 無關，可單元測試）===
 
@@ -163,7 +163,7 @@ export class ClaudeRunner implements CLIRunner, CLIPaneIO {
     this.tmux(`new-session -d -s ${TMUX_SESSION} -x ${ClaudeRunner.PANE_WIDTH} -y ${ClaudeRunner.PANE_HEIGHT}`)
     // 對 workDir 做 shell single-quote escape，避免特殊字元被誤解析
     const safeDir = `'${workDir.replace(/'/g, `'\\''`)}'`
-    const launchClaude = `${CLAUDE_BIN} --dangerously-skip-permissions`
+    const launchClaude = `${PREFIX} --dangerously-skip-permissions`
     const cleanupSession = `tmux kill-session -t ${TMUX_SESSION}`
     // cd 失敗 → 整段中止（&&）；Claude 退出（無論成敗）→ 必跑 cleanup（;）
     const cmd = `cd ${safeDir} && ${launchClaude}; ${cleanupSession}`
@@ -185,7 +185,7 @@ export class ClaudeRunner implements CLIRunner, CLIPaneIO {
 
   private isClaudeRunning(): boolean {
     // 用啟動旗標當 pattern，避免單純 'claude' 字串誤判（vim claude.md 之類）
-    const pattern = `${CLAUDE_BIN} --dangerously-skip-permissions`
+    const pattern = `${PREFIX} --dangerously-skip-permissions`
     return spawnSync('pgrep', ['-f', pattern], { stdio: 'pipe' }).status === 0
   }
 
