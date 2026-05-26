@@ -1,8 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { ConversationMirror } from './ConversationMirror.js'
-import type { ChatPort } from '../ports/ChatPort.js'
-import type { CLIPaneIO } from '../ports/CLIPaneIO.js'
-import type { LogPort } from '../ports/LogPort.js'
+import type { ChatPort, CLIPaneIO, LogPort } from '@ports'
 
 const mockBot = (): ChatPort => ({
   send: vi.fn().mockResolvedValue(undefined),

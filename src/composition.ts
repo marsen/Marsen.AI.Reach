@@ -3,14 +3,11 @@
  * 由 entry 注入 ConfigPort，需要設定的 adapter 從中取值。
  */
 
-import type { ConfigPort } from './application/ports/ConfigPort.js'
-import type { CLIRunner } from './application/ports/CLIRunner.js'
-import type { CLIPaneIO } from './application/ports/CLIPaneIO.js'
-import type { ChatPort } from './application/ports/ChatPort.js'
-import type { BotConnection } from './application/ports/BotConnection.js'
+import type { ConfigPort, CLIRunner, CLIPaneIO, ChatPort, BotConnection } from '@ports'
 import { ClaudeRunner } from './infrastructure/cli/ClaudeRunner.js'
 import { UnixSocketBotConnection } from './infrastructure/control/UnixSocketBotConnection.js'
 import { TelegramBot } from './infrastructure/platforms/TelegramBot.js'
+import { log } from './infrastructure/FileLogger.js'
 
 export interface Composition {
   cliRunner: CLIRunner
@@ -21,11 +18,11 @@ export interface Composition {
 
 export function createComposition(config: ConfigPort): Composition {
   // ClaudeRunner 同時實作 CLIRunner + CLIPaneIO，同個 instance 綁兩個 port
-  const tmuxClaude = new ClaudeRunner()
+  const tmuxClaude = new ClaudeRunner(log)
   return {
     cliRunner: tmuxClaude,
     cliPaneIO: tmuxClaude,
     botConnection: new UnixSocketBotConnection(config),
-    bot: new TelegramBot(config),
+    bot: new TelegramBot(config, log),
   }
 }

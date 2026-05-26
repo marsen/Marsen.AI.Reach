@@ -1,4 +1,4 @@
-import type { ConfigPort } from '../application/ports/ConfigPort.js'
+import type { ConfigPort } from '@ports'
 
 /**
  * ConfigPort 的具體實作：從 process.env 讀。

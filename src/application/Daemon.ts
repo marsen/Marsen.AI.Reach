@@ -1,8 +1,7 @@
 import { createServer, type Server, type Socket } from 'net'
 import { rmSync, mkdirSync } from 'fs'
 import { dirname } from 'path'
-import type { CLIRunner } from './ports/CLIRunner.js'
-import { type ConfigPort, CONFIG } from './ports/ConfigPort.js'
+import { type CLIRunner, type ConfigPort, CONFIG } from '@ports'
 
 /**
  * Bot daemon —— 接 Unix socket、分派命令給內部邏輯。

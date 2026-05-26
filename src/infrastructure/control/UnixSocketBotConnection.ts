@@ -4,8 +4,7 @@
  */
 import { createConnection } from 'net'
 import { text } from 'stream/consumers'
-import type { BotConnection } from '../../application/ports/BotConnection.js'
-import { type ConfigPort, CONFIG } from '../../application/ports/ConfigPort.js'
+import { type BotConnection, type ConfigPort, CONFIG } from '@ports'
 
 export class UnixSocketBotConnection implements BotConnection {
   private readonly socketPath: string

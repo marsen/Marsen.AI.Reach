@@ -7,9 +7,7 @@ import { setTimeout as sleep } from 'timers/promises'
 import { mkdirSync, writeFileSync } from 'fs'
 import { homedir } from 'os'
 import { join } from 'path'
-import { CLIRunner } from '../../application/ports/CLIRunner.js'
-import { CLIPaneIO } from '../../application/ports/CLIPaneIO.js'
-import { log } from '../logger.js'
+import type { CLIRunner, CLIPaneIO, LogPort } from '@ports'
 
 // Claude CLI 啟動命令；之後要抽成環境變數 / 設定檔再改這裡
 const PREFIX = 'claude'
@@ -69,6 +67,8 @@ export function extractLastExchange(pane: string): string {
 
 export class ClaudeRunner implements CLIRunner, CLIPaneIO {
   readonly sessionName = TMUX_SESSION
+
+  constructor(private readonly log: LogPort) {}
 
   private static readonly POLL_INTERVAL_MS = 800
   private static readonly STABLE_POLLS = 3            // 連續同 N 次 capture 視為穩定
@@ -143,7 +143,7 @@ export class ClaudeRunner implements CLIRunner, CLIPaneIO {
     const exchange = extractLastExchange(current)
     // 空字串 = 還沒有使用者訊息（剛開 session）；下次再看。lastExchange 初值也是空，自然不會誤觸 emit。
     if (exchange && exchange !== this.lastExchange) {
-      log.debug(`[pane] emit exchange (${exchange.length} chars)`)
+      this.log.debug(`[pane] emit exchange (${exchange.length} chars)`)
       this.dumpEmit(current, exchange) // TODO #166-debug: 暫時診斷 3 連 emit
       for (const h of this.outputHandlers) h(exchange)
       this.lastExchange = exchange
@@ -160,7 +160,7 @@ export class ClaudeRunner implements CLIRunner, CLIPaneIO {
       const body = `=== CLEANED PANE (${cleanedPane.length} chars) ===\n${cleanedPane}\n=== EXCHANGE (${exchange.length} chars) ===\n${exchange}\n`
       writeFileSync(join(dir, `${ts}.txt`), body)
     } catch (e) {
-      log.error('[pane-dump] failed', e)
+      this.log.error('[pane-dump] failed', e)
     }
   }
 

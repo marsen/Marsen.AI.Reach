@@ -4,12 +4,12 @@
  * - daemon 被 spawn 為 stdio:'ignore' 時，console 那邊看不到 → 看檔
  * - foreground 直接跑時 → console 跟檔同步
  *
- * infra 模組可直接 import 這個 `log` 單例（infra→infra）；application 端走 LogPort 注入。
+ * entry / composition root 直接 import `log` 單例後注入給 adapter；所有 adapter 走 LogPort 建構子注入。
  */
 import { appendFileSync, mkdirSync } from 'fs'
 import { homedir } from 'os'
 import { dirname, join } from 'path'
-import type { LogPort } from '../application/ports/LogPort.js'
+import type { LogPort } from '@ports'
 
 const LOG_PATH = join(homedir(), '.rai', 'logs', 'daemon.log')
 

@@ -5,9 +5,7 @@
  * 單一使用者：所有訊息只送 / 收綁定的 chatId（從 env 讀）。
  */
 import { Bot } from 'grammy'
-import type { ChatPort } from '../../application/ports/ChatPort.js'
-import { type ConfigPort, CONFIG } from '../../application/ports/ConfigPort.js'
-import { log } from '../logger.js'
+import { type ChatPort, type ConfigPort, type LogPort, CONFIG } from '@ports'
 
 export class TelegramBot implements ChatPort {
   // Telegram 單則訊息字元上限；超過 API 會拒絕，send 內自動分段
@@ -16,7 +14,7 @@ export class TelegramBot implements ChatPort {
   private readonly bot: Bot
   private readonly chatId: number
 
-  constructor(config: ConfigPort) {
+  constructor(config: ConfigPort, private readonly log: LogPort) {
     // config.get 讀不到即 throw（fail-loud），不需再各別檢查
     this.chatId = Number(config.get(CONFIG.TelegramUserId))
     this.bot = new Bot(config.get(CONFIG.TelegramBotToken))
@@ -33,7 +31,7 @@ export class TelegramBot implements ChatPort {
     // grammY 訂閱「使用者發來的文字訊息」事件；whitelist 過濾非綁定 chat 的訊息
     this.bot.on('message:text', (ctx) => {
       if (ctx.chat.id !== this.chatId) {
-        log.debug(`[telegram] ignored message from chat ${ctx.chat.id}`)
+        this.log.debug(`[telegram] ignored message from chat ${ctx.chat.id}`)
         return
       }
       handler(ctx.message.text)
@@ -45,7 +43,7 @@ export class TelegramBot implements ChatPort {
     await this.bot.init()
     // drop_pending_updates：跳過 bot 離線時積壓的訊息，避免重啟後一次倒進來
     void this.bot.start({ drop_pending_updates: true })
-      .catch((e) => log.error('[telegram] polling failed', e))
+      .catch((e) => this.log.error('[telegram] polling failed', e))
   }
 
   async stop(): Promise<void> {

@@ -12,16 +12,22 @@ src/
 │   ├── entities/        # Entity（核心資料 + 行為）
 │   ├── value-objects/   # Value Object（若有）
 │   └── services/        # 純 domain 邏輯（無 I/O）
-├── application/         # 組合 Entity 完成流程
-│   ├── use-cases/       # Use Case（可改名 services/）
-│   └── ports/           # 介面（application 定義給 infra 實作的契約）
+│   # ⚠️ 預留層：本專案目前是 thin bridge（Telegram ↔ Claude CLI relay），
+│   #    無豐富商業規則，尚未建立 domain/。將來長出 session 生命週期 /
+│   #    路由 / 權限政策等業務規則時再開。
+├── application/         # 編排流程、定義 port
+│   ├── services/        # 應用服務（例：ConversationMirror）
+│   ├── ports/           # 介面（application 定義給 infra 實作的契約）
+│   └── Daemon.ts        # daemon 應用服務（socket server + 命令 dispatch）
 ├── infrastructure/      # 實作 port、處理 I/O 與外部系統
-│   ├── claude/          # 例：ClaudeRunner、claudeParser
-│   ├── ipc/             # 例：UnixSocketBotConnection
-│   ├── platforms/       # 例：LineAdapter、TelegramAdapter
-│   └── config/          # 環境變數讀取
-├── composition.ts       # Port → Adapter mapping（位置待討論，見下）
-└── (root)               # main entry：bot.ts 等
+│   ├── cli/             # 例：ClaudeRunner（CLI 介面，不綁特定 CLI）
+│   ├── control/         # 例：UnixSocketBotConnection（host CLI ↔ daemon IPC）
+│   ├── platforms/       # 例：TelegramBot（chat 平台）
+│   ├── EnvConfig.ts     # 環境變數讀取（ConfigPort 實作）
+│   └── FileLogger.ts    # 寫檔 + console logger（LogPort 實作）
+├── composition.ts       # Port → Adapter mapping（位置見下 Q1）
+├── bot.ts               # 使用者主動執行的 entry
+└── daemon-entry.ts      # 被 bot spawn 的 daemon entry（位置見下 Q2）
 ```
 
 ### 依賴鐵則

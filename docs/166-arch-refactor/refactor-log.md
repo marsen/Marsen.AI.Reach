@@ -165,29 +165,6 @@ Bot ↔ Client 透過 Unix socket 通訊（典型 client-server）。
 - `BotPort` 介面層去 TC 縮寫；TC/PC 全 codebase 退場排在 **舊 code（`bot.ts`）退場後**（路徑 B 待辦）
 - `BotPort` → `ChatPort`：介面層去 Bot 字眼（89fd328）
 
-## 重啟檢查點（2026-05-23 第二批，pending）
-
-⚠️ 以下 commit 在 15:21 那次重啟（PID 502，由舊路徑 `src/presentation/daemon-entry.ts` spawn）**之後**才產生，尚未生效：
-
-| commit | 內容 | 影響 |
-|---|---|---|
-| `7dbcc72` | presentation/ 淨空，entry 落根層 | **關鍵**：`daemon-entry.ts` 移到 `src/`，PID 502 仍從已不存在的舊路徑跑；plist 已改指 `src/bot.ts` |
-| `84f7962` | TC/PC 縮寫全退場 | identifier + log 字串改名（`lastChatInput` / `stripUserIfFromChat` / `chat↔Claude`） |
-
-重啟步驟：`kill 502`（或 `pgrep -f daemon-entry`）→ `rai`
-重啟後驗證：`rai status` + Telegram 發一句測試對話接回；log 應出現 `[mirror] chat→Claude` 新字串。
-
-### 已生效（15:21 重啟載入，PID 502）
-
-| commit | 內容 |
-|---|---|
-| `0d9d6c9` | pane dump diagnostic（**仍開著**，每次 emit 寫 `~/.rai/logs/pane-dumps/`，等 3 連 emit 重現後 diff） |
-| `ad51456` | TelegramBot 自讀 env |
-| `6d392a3` | 舊 bot.ts 流程全刪（-1074 行；流失 SessionLogger / push / SIGUSR1 / Express） |
-| `574ff5a` | ClaudeRunner2 → ClaudeRunner |
-
----
-
 ## 進度（2026-05-23）
 
 舊 bot.ts 流程整套退場（commit `6d392a3`）：刪 `bot.ts` / `TmuxClaudeAdapter` / `ClaudeRunner` v1 / `presentation/platforms/*` / use-cases / domain / SessionLogger / 舊 env helper。連帶刪 `docs/architecture/architecture.md` + `modules.md`（描述舊架構），README / CLAUDE.md surgical edit。
@@ -205,8 +182,6 @@ Bot ↔ Client 透過 Unix socket 通訊（典型 client-server）。
 - launchd plist `~/Library/LaunchAgents/com.marsen.rai.plist` 的 `bot.ts` 路徑同步更新（`presentation/bot.ts` → `bot.ts`）
 - bot.ts 標頭 `PC 端` → `host 端`（順手清；TC/PC 全面退場仍在待續）
 - docs surgical edit：`known-issues.md`、`conventions.md`（Q1/Q2 改標暫緩 + 註明三檔暫落根層）、`CLAUDE.md`
-
-⚠️ **重啟檢查點**：目前在跑的 daemon 由舊路徑 `src/presentation/daemon-entry.ts` spawn（已不存在但進程記憶體仍跑），下次重啟才會走新路徑。重啟：`kill <daemon PID>` → `rai`。
 
 ## config / logger 歸屬討論（2026-05-24 拍板）
 
@@ -254,4 +229,4 @@ Bot ↔ Client 透過 Unix socket 通訊（典型 client-server）。
 - **application service 是否進 composition / 提供 factory（稍後優先處理）**：`ConversationMirror` / `Daemon` 等 service 目前 `daemon-entry` 自己 new，跟 port-adapter 都在 composition 不對稱。usage 不足先記（只有 1-2 個 service），等更多 service 出現再決定要不要把 wiring 集中到 composition
 - ~~`claudeParser` 整進 `ClaudeRunner.ts`~~ ✅ 完成：parser 三函式（`cleanAnsi`/`hasPrompt`/`extractLastExchange`）+ regex 常數移入 Runner file-scope，`extractLastExchange` export 供測試；刪 `claudeParser.ts`（連同死碼 `extractResponse`、未外用的 `PROMPT_RE` export）+ `src/infrastructure/claude/` 空目錄。測試搬 `ClaudeRunner.test.ts`（不照待續刪測，保住 regex 覆蓋率）。`CLAUDE_BIN` inline 到 Runner；`config.ts` 只剩 `TMUX_SESSION` / `SOCKET_PATH`
 - **ConversationMirror 不合進 TelegramBot**：逐段拆解後內無 Telegram-specific 邏輯，剝 user 行決策是線性 chat 通用特性；唯一非通用是 `❯ ` 偵測（Claude CLI 規格），未來該下沉到 `CLIPaneIO` adapter 讓 emit 已結構化（2026-05-23 結論）
-- **doc 與現實不符（待修 conventions）**：`conventions.md` 分層 diagram 列了 `domain/`，但本專案實際只有 application / infrastructure / 根層 entry——無 domain。本質是 thin bridge（Telegram ↔ Claude CLI relay），無豐富商業規則，舊 `domain/`（`Session` entity 等）已於 `6d392a3` 隨舊架構刪除。不該硬開空 domain（no-speculative）。待在 conventions 加註「本專案目前無 domain 層」或標 domain 為選用，免得讀者看 diagram 以為缺一層。將來長出業務規則（session 生命週期 / 路由 / 權限政策）再開 domain。
+- ~~**doc 與現實不符（待修 conventions）**~~ ✅ 完成（2026-05-26）：`conventions.md` 分層 diagram 全面對齊現實。決議**保留 `domain/`** 並標「⚠️ 預留層」（使用者要保留，非刪除——thin bridge 目前無商業規則，將來長出 session 生命週期 / 路由 / 權限政策再開）。其餘改名對齊：`claude/`→`cli/`、`ipc/`→`control/`、`use-cases/`→`services/`、platforms 範例改 `TelegramBot`、`config/` 資料夾改回 loose file `EnvConfig.ts`（單一實作不開資料夾，守 no-speculative）、加 `logger.ts`、兩個 root entry（`bot.ts`/`daemon-entry.ts`）+ `Daemon.ts` 入列。`EnvConfig.ts` 維持 infra 根層、檔名不動。
