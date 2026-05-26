@@ -9,7 +9,7 @@ import { homedir } from 'os'
 import { join } from 'path'
 import { CLIRunner } from '../../application/ports/CLIRunner.js'
 import { CLIPaneIO } from '../../application/ports/CLIPaneIO.js'
-import { TMUX_SESSION } from '../../config.js'
+import { TMUX_SESSION } from '../config.js'
 import { log } from '../logger.js'
 
 // Claude CLI 啟動命令；之後要抽成環境變數 / 設定檔再改這裡

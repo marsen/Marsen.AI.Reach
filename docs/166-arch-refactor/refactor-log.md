@@ -225,7 +225,7 @@ Bot ↔ Client 透過 Unix socket 通訊（典型 client-server）。
 ## 待續
 
 - ~~TC/PC 縮寫全 codebase 退場~~ ✅ 完成：`ConversationMirror.ts` 註解 + identifier（`lastTcInput`→`lastChatInput`、`stripUserIfFromTc`→`stripUserIfFromChat`、log `TC↔chat`）+ `.test.ts` 描述全清。TC=chat 端、PC=host 端
-- **config → `ConfigPort` + `infrastructure/config.ts`（下一步，模式同 logger）**
+- ~~config → infra~~ ✅ 完成（2026-05-26，走「infra + 原始值注入」路徑 B，未開 `ConfigPort` 介面）：`src/config.ts` → `src/infrastructure/config.ts`；`Daemon`(application) 改建構子注入 `socketPath: string`，不再 import config（朝外依賴被切斷）；`UnixSocketBotConnection`/`ClaudeRunner`(infra)、`bot.ts`(entry) 直接 import 新路徑。根層 `config.ts` 已刪。設計討論記錄：考慮過 shared kernel 與 ConfigPort，使用者最終選 B（概念正確 + 注入成本極小、不開不必要的介面）。`PREFIX`/`TELEGRAM_*`/`LOG_PATH` 等單一 consumer 的值維持 adapter-local（不集中）。`TMUX_SESSION` 評估後維持常數（跨進程契約 + 無部署需求）。
 - `conventions.md` Q1 / Q2 拍板（composition.ts 與 daemon-entry.ts 歸屬，暫緩）
 - `ClaudeRunner.tmux()` 用 `execSync` 預設 `stderr: 'inherit'`，tmux session 不存在時 polling 把 `no server running` 噴到 console；改 `stdio: ['pipe', 'pipe', 'pipe']` 或 `pollOnce` 內加 `sessionExists()` 早退（低優先）
 - **application service 是否進 composition / 提供 factory（稍後優先處理）**：`ConversationMirror` / `Daemon` 等 service 目前 `daemon-entry` 自己 new，跟 port-adapter 都在 composition 不對稱。usage 不足先記（只有 1-2 個 service），等更多 service 出現再決定要不要把 wiring 集中到 composition

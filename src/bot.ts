@@ -12,7 +12,7 @@ import { dirname, join } from 'path'
 import { setTimeout as sleep } from 'timers/promises'
 import { select } from '@inquirer/prompts'
 import { botConnection } from './composition.js'
-import { TMUX_SESSION } from './config.js'
+import { TMUX_SESSION } from './infrastructure/config.js'
 
 /** 進入點：確保 daemon 在跑 → 顯示狀態 → 互動選擇 → 派工 → 接管 terminal */
 async function main(): Promise<void> {

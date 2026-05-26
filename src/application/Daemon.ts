@@ -1,7 +1,6 @@
 import { createServer, type Server, type Socket } from 'net'
 import { rmSync } from 'fs'
 import type { CLIRunner } from './ports/CLIRunner.js'
-import { SOCKET_PATH } from '../config.js'
 
 /**
  * Bot daemon —— 接 Unix socket、分派命令給內部邏輯。
@@ -18,21 +17,24 @@ export class Daemon {
   private server: Server | null = null
   private workDir: string | null = null
 
-  constructor(private readonly cliRunner: CLIRunner) {}
+  constructor(
+    private readonly cliRunner: CLIRunner,
+    private readonly socketPath: string,
+  ) {}
 
   start(): void {
-    rmSync(SOCKET_PATH, { force: true })
+    rmSync(this.socketPath, { force: true })
     this.server = createServer((conn) => {
       conn.on('error', () => {})   // client 中途斷線時避免 unhandled error
       conn.on('data', (data) => this.dispatch(data.toString().trim(), conn))
     })
-    this.server.listen(SOCKET_PATH)
+    this.server.listen(this.socketPath)
   }
 
   close(): void {
     this.server?.close()
     this.server = null
-    rmSync(SOCKET_PATH, { force: true })
+    rmSync(this.socketPath, { force: true })
   }
 
   private dispatch(cmd: string, conn: Socket): void {
