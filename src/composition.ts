@@ -1,6 +1,6 @@
 /**
  * Composition Root —— port → adapter mapping。
- * 環境設定常數請從 ./config.js 來。
+ * 環境設定常數請從 ./infrastructure/config.js 來。
  */
 
 import type { CLIRunner } from './application/ports/CLIRunner.js'
@@ -17,5 +17,5 @@ const tmuxClaude = new ClaudeRunner()
 export const cliRunner: CLIRunner = tmuxClaude
 export const cliPaneIO: CLIPaneIO = tmuxClaude
 export const botConnection: BotConnection = new UnixSocketBotConnection()
-// TelegramBot 自己讀 env（透過 env-bootstrap 預載 ~/.rai/.env），composition 不認 token/chatId
+// TelegramBot 自己從根目錄 .env 讀 env，composition 不認 token/chatId
 export const bot: ChatPort = new TelegramBot()
