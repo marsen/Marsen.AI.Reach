@@ -6,4 +6,3 @@ import { homedir } from 'os'
 import { join } from 'path'
 
 export const SOCKET_PATH = join(homedir(), '.rai', 'bot.sock')
-export const TMUX_SESSION = 'claude-reach'

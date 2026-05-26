@@ -9,11 +9,14 @@ import { homedir } from 'os'
 import { join } from 'path'
 import { CLIRunner } from '../../application/ports/CLIRunner.js'
 import { CLIPaneIO } from '../../application/ports/CLIPaneIO.js'
-import { TMUX_SESSION } from '../config.js'
 import { log } from '../logger.js'
 
 // Claude CLI 啟動命令；之後要抽成環境變數 / 設定檔再改這裡
 const PREFIX = 'claude'
+
+// tmux session 名：ClaudeRunner 擁有；透過 CLIRunner.sessionName 暴露給 Daemon，
+// daemon 再經 IPC（info 命令）回給 client，bot.ts 不直接 import。
+const TMUX_SESSION = 'claude-reach'
 
 // === Claude CLI pane 文字解析（純函式，與 tmux/process 無關，可單元測試）===
 
@@ -65,6 +68,8 @@ export function extractLastExchange(pane: string): string {
 }
 
 export class ClaudeRunner implements CLIRunner, CLIPaneIO {
+  readonly sessionName = TMUX_SESSION
+
   private static readonly POLL_INTERVAL_MS = 800
   private static readonly STABLE_POLLS = 3            // 連續同 N 次 capture 視為穩定
   private static readonly STARTUP_TIMEOUT_MS = 60_000

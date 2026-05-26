@@ -12,7 +12,6 @@ import { dirname, join } from 'path'
 import { setTimeout as sleep } from 'timers/promises'
 import { select } from '@inquirer/prompts'
 import { botConnection } from './composition.js'
-import { TMUX_SESSION } from './infrastructure/config.js'
 
 /** 進入點：確保 daemon 在跑 → 顯示狀態 → 互動選擇 → 派工 → 接管 terminal */
 async function main(): Promise<void> {
@@ -23,7 +22,7 @@ async function main(): Promise<void> {
     printStatus(info.workDir, cwd)
     const action = await chooseAction(info, cwd)
     await dispatchChoice(action, cwd)
-    attachTmux()
+    attachTmux(info.sessionName)
   } catch (e) {
     handleError(e)
   }
@@ -102,11 +101,11 @@ async function waitForDaemonReady(): Promise<void> {
 }
 
 /** 把本 process 的 terminal 接到 daemon 開的 tmux session；已在 tmux 內改用 switch-client 避免 nested */
-function attachTmux(): void {
+function attachTmux(sessionName: string): void {
   // 已在 tmux 內用 switch-client（避免 nested session），否則 attach
   const args = process.env.TMUX
-    ? ['switch-client', '-t', TMUX_SESSION]
-    : ['attach', '-t', TMUX_SESSION]
+    ? ['switch-client', '-t', sessionName]
+    : ['attach', '-t', sessionName]
 
   const tmux = spawn('tmux', args, { stdio: 'inherit' })
   tmux.on('error', (e) => {

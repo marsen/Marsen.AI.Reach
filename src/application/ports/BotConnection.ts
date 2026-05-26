@@ -8,6 +8,6 @@ export interface BotConnection {
   /** 純連線探測：能連上 socket 即 true（不送命令），用於判斷 daemon 是否在跑。 */
   isAlive(): Promise<boolean>
 
-  info(): Promise<{ workDir: string | null; sessionAlive: boolean }>
+  info(): Promise<{ workDir: string | null; sessionAlive: boolean; sessionName: string }>
   start(workDir: string): Promise<void>
 }

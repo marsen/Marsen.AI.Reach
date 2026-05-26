@@ -18,7 +18,7 @@ export class UnixSocketBotConnection implements BotConnection {
     })
   }
 
-  async info(): Promise<{ workDir: string | null; sessionAlive: boolean }> {
+  async info(): Promise<{ workDir: string | null; sessionAlive: boolean; sessionName: string }> {
     return JSON.parse(await this.send('info'))
   }
 

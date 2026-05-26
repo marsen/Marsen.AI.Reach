@@ -6,7 +6,7 @@ import type { CLIRunner } from './ports/CLIRunner.js'
  * Bot daemon —— 接 Unix socket、分派命令給內部邏輯。
  *
  * 支援命令：
- *   info             → 回 JSON: { workDir, sessionAlive }
+ *   info             → 回 JSON: { workDir, sessionAlive, sessionName }
  *   start:<workDir>  → 一律新建 session（kill 舊建新），回 ok / error:<msg>
  *
  * 協定假設：每連線送一個命令（< 1KB）、收完一個回應就關。
@@ -42,6 +42,7 @@ export class Daemon {
       conn.end(JSON.stringify({
         workDir: this.workDir,
         sessionAlive: this.cliRunner.isAlive(),
+        sessionName: this.cliRunner.sessionName
       }) + '\n')
       return
     }
