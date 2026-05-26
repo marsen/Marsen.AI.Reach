@@ -1,6 +1,8 @@
 import { createServer, type Server, type Socket } from 'net'
-import { rmSync } from 'fs'
+import { rmSync, mkdirSync } from 'fs'
+import { dirname } from 'path'
 import type { CLIRunner } from './ports/CLIRunner.js'
+import { type ConfigPort, CONFIG } from './ports/ConfigPort.js'
 
 /**
  * Bot daemon —— 接 Unix socket、分派命令給內部邏輯。
@@ -17,12 +19,17 @@ export class Daemon {
   private server: Server | null = null
   private workDir: string | null = null
 
+  private readonly socketPath: string
+
   constructor(
     private readonly cliRunner: CLIRunner,
-    private readonly socketPath: string,
-  ) {}
+    config: ConfigPort,
+  ) {
+    this.socketPath = config.get(CONFIG.SocketPath)
+  }
 
   start(): void {
+    mkdirSync(dirname(this.socketPath), { recursive: true })   // runtime 確保 socket 目錄存在（dev/prod 皆然）
     rmSync(this.socketPath, { force: true })
     this.server = createServer((conn) => {
       conn.on('error', () => {})   // client 中途斷線時避免 unhandled error

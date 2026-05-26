@@ -4,14 +4,10 @@
  * 用 long-polling，本機/不開 webhook 即可跑。
  * 單一使用者：所有訊息只送 / 收綁定的 chatId（從 env 讀）。
  */
-import { config as dotenvConfig } from 'dotenv'
 import { Bot } from 'grammy'
 import type { ChatPort } from '../../application/ports/ChatPort.js'
+import { type ConfigPort, CONFIG } from '../../application/ports/ConfigPort.js'
 import { log } from '../logger.js'
-
-// 從執行目錄（repo / 部署目錄）的根 .env 載入。dev 與 prod 都只放這一份，不需額外設定。
-// constructor 立刻讀 env，所以在 module load 時就 load（先於 composition `new TelegramBot()`）。
-dotenvConfig()
 
 export class TelegramBot implements ChatPort {
   // Telegram 單則訊息字元上限；超過 API 會拒絕，send 內自動分段
@@ -20,13 +16,10 @@ export class TelegramBot implements ChatPort {
   private readonly bot: Bot
   private readonly chatId: number
 
-  constructor() {
-    const token = process.env.TELEGRAM_BOT_TOKEN
-    const chatIdRaw = process.env.TELEGRAM_USER_ID
-    if (!token) throw new Error('TELEGRAM_BOT_TOKEN not set')
-    if (!chatIdRaw) throw new Error('TELEGRAM_USER_ID not set')
-    this.chatId = Number(chatIdRaw)
-    this.bot = new Bot(token)
+  constructor(config: ConfigPort) {
+    // config.get 讀不到即 throw（fail-loud），不需再各別檢查
+    this.chatId = Number(config.get(CONFIG.TelegramUserId))
+    this.bot = new Bot(config.get(CONFIG.TelegramBotToken))
   }
 
   async send(text: string): Promise<void> {

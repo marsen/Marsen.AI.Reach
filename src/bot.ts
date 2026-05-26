@@ -6,12 +6,16 @@
  * 3. 互動：顯示狀態 + 選舊/新/取消
  * 4. 送命令給 daemon、自動接管 terminal 進入 tmux session
  */
+import 'dotenv/config'   // 唯一起點：只有 bot.ts 載 .env 檔；daemon 子進程繼承本 process 的 env
 import { spawn } from 'child_process'
 import { fileURLToPath } from 'url'
 import { dirname, join } from 'path'
 import { setTimeout as sleep } from 'timers/promises'
 import { select } from '@inquirer/prompts'
-import { botConnection } from './composition.js'
+import { createComposition } from './composition.js'
+import { EnvConfig } from './infrastructure/EnvConfig.js'
+
+const { botConnection } = createComposition(new EnvConfig())
 
 /** 進入點：確保 daemon 在跑 → 顯示狀態 → 互動選擇 → 派工 → 接管 terminal */
 async function main(): Promise<void> {

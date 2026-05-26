@@ -222,10 +222,33 @@ Bot ↔ Client 透過 Unix socket 通訊（典型 client-server）。
 
 **config（ConfigPort）下一步**：同模式拆。`ConfigPort` 先只放 `socketPath`（app 端只有 `Daemon` 需要；`tmuxSession` 只 infra/entry 用不進 port）；`config.ts` → `infrastructure/config.ts`；`Daemon` 注入 `ConfigPort`。
 
+## config → ConfigPort（推翻 path B，2026-05-26）
+
+同日先做了 path B（raw 值注入、不開介面），隨即被推翻。完整理由鏈（避免之後重炒）：
+
+**推翻觸發點**：先把 env 從 `~/.rai/.env` 改回專案根目錄 `.env`（commit `1a477dd`，去掉全域安裝時代的遺留）。接著討論「prod 不一定能寫 `~/.rai`」：
+
+- 原以為 `SOCKET_PATH` 是固定常數（跨進程契約、永不變），故 path B 當常數注入。
+- 但「prod 寫不了 home」證明 socket 路徑**會隨環境變** → 它是 operator config、不是常數 → 該進 `.env` + fail-loud，跟 `TELEGRAM_*` 同類。
+- 一旦 config 值來自 `.env`（runtime、會變），抽 `ConfigPort` 就站得住腳（非 speculative）——這正是 path B 當時為省介面而放棄、如今條件變了該補的。
+- 駁回過的替代：`XDG_RUNTIME_DIR ?? tmpdir` 的 OS-env fallback——使用者點出這仍是「`process.env.X ?? default`」，bright-line 規則不該開判斷型例外；把可寫位置交 `.env` 顯式設定，例外問題直接消失。
+
+**最終形狀**：
+- `application/ports/ConfigPort.ts`：`get(key): string`（fail-loud、禁預設）+ `CONFIG` key 常數（避免 call site magic string）
+- `infrastructure/EnvConfig.ts`：讀 `process.env`，缺即 throw
+- `composition.ts` → factory `createComposition(config: ConfigPort)`
+- `UnixSocketBotConnection` / `Daemon`（反轉 path B 的 `socketPath: string`）/ `TelegramBot` 全改建構子注入 `ConfigPort`，用 key 取值
+- **所有散落的 `process.env.X` 讀取退場**，集中到 `EnvConfig`。唯一保留直讀：`bot.ts` 的 `process.env.TMUX`——它是「在不在 tmux 內」的存在偵測、缺席是正常值，不是 config，套 fail-loud 的 ConfigPort 反而會壞（不同類別，非開例外）
+- **刪** `infrastructure/config.ts`（整個檔退場）
+- `SOCKET_PATH` 移入 `.env`（相對路徑 `.rai/bot.sock`，對 cwd；Unix socket 接受相對、OS 在 bind/connect 時解析，兩端 cwd 一致即可；`.gitignore` 加 `.rai/`）；`Daemon.start()` bind 前 `mkdirSync(dirname)` 由 runtime 自建目錄（dev/prod 皆然）
+- **env 載入唯一起點 = bot.ts**：只有 `bot.ts` `import 'dotenv/config'`；`daemon-entry` 是 bot.ts `spawn` 的子進程、繼承其 env，**不自行載 .env**（避免第二個 .env 讀取源、又不洩漏 secret——argv 傳會被 `ps` 看到 token）
+
+驗證：tsc 乾淨、10 tests、端到端 smoke（`.env` 讀 `SOCKET_PATH` / 相對 socket bind+connect / 缺 key fail-loud）。
+
 ## 待續
 
 - ~~TC/PC 縮寫全 codebase 退場~~ ✅ 完成：`ConversationMirror.ts` 註解 + identifier（`lastTcInput`→`lastChatInput`、`stripUserIfFromTc`→`stripUserIfFromChat`、log `TC↔chat`）+ `.test.ts` 描述全清。TC=chat 端、PC=host 端
-- ~~config → infra~~ ✅ 完成（2026-05-26，走「infra + 原始值注入」路徑 B，未開 `ConfigPort` 介面）：`src/config.ts` → `src/infrastructure/config.ts`；`Daemon`(application) 改建構子注入 `socketPath: string`，不再 import config（朝外依賴被切斷）；`UnixSocketBotConnection`/`ClaudeRunner`(infra)、`bot.ts`(entry) 直接 import 新路徑。根層 `config.ts` 已刪。設計討論記錄：考慮過 shared kernel 與 ConfigPort，使用者最終選 B（概念正確 + 注入成本極小、不開不必要的介面）。`PREFIX`/`TELEGRAM_*`/`LOG_PATH` 等單一 consumer 的值維持 adapter-local（不集中）。`TMUX_SESSION` 評估後維持常數（跨進程契約 + 無部署需求）。
+- ~~config → infra（path B）~~ ⚠️ **同日推翻**：先走「raw 值注入、不開介面」的 path B，當天因 prod 可寫性討論改抽 `ConfigPort`、`config.ts` 整個刪除、`SOCKET_PATH` 移入 `.env`。詳見下方「config → ConfigPort（推翻 path B）」段。
 - `conventions.md` Q1 / Q2 拍板（composition.ts 與 daemon-entry.ts 歸屬，暫緩）
 - `ClaudeRunner.tmux()` 用 `execSync` 預設 `stderr: 'inherit'`，tmux session 不存在時 polling 把 `no server running` 噴到 console；改 `stdio: ['pipe', 'pipe', 'pipe']` 或 `pollOnce` 內加 `sessionExists()` 早退（低優先）
 - **application service 是否進 composition / 提供 factory（稍後優先處理）**：`ConversationMirror` / `Daemon` 等 service 目前 `daemon-entry` 自己 new，跟 port-adapter 都在 composition 不對稱。usage 不足先記（只有 1-2 個 service），等更多 service 出現再決定要不要把 wiring 集中到 composition
