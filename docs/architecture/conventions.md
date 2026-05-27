@@ -105,6 +105,23 @@ void this.bot.start({ drop_pending_updates: true })
 - catch 內至少 `log.error`，至於要不要重啟、上報、退出 process 視情境決定
 - 一次性短 Promise（`fs.writeFile` 寫個 log）可豁免——拋上去也沒人接，但反正不是 silent 死服務
 
+### 常數與 regex：只抽多次使用的，單次使用 inline
+
+- **多處使用** → 抽成命名常數，放宣告處加註解說明語意
+- **單次使用** → 直接 inline，註解寫在同行行尾或正上方一行
+
+```ts
+// ❌ 不行（只用一次卻抽到頂端，讀者要上下跳）
+const COOK_TIMER_RE = /^\s*✻ .+$/gm
+// ...（數十行後）
+exchange.replace(COOK_TIMER_RE, '')
+
+// ✅ OK（inline，原因就在使用處）
+exchange.replace(/^\s*✻ .+$/gm, '')  // cook timer（思考中狀態列）
+```
+
+- regex 有 `g` flag 且只用一次時，inline 可省去 `lastIndex` reset
+
 ## Git 工作流程
 
 ### 分支命名
