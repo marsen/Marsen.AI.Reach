@@ -26,8 +26,8 @@ src/
 │   ├── EnvConfig.ts     # 環境變數讀取（ConfigPort 實作）
 │   ├── FileLogger.ts    # 寫檔 + console logger（LogPort 實作）
 │   └── composition.ts   # 依賴裝配（port → adapter wiring）
-├── bot.ts               # 唯一使用者入口
-└── daemon-entry.ts      # daemon 進程入口（位置待議）
+├── bot.ts               # client 入口：互動式 CLI，透過 socket 控制 daemon
+└── daemon-entry.ts      # server 入口：background 常駐，執行 Claude CLI + chat relay
 ```
 
 ### 依賴鐵則
@@ -44,7 +44,7 @@ src/
 | **domain** | 表達商業概念與規則 | 任何 I/O、framework |
 | **application** | 編排 domain、呼叫 port 取得外部能力 | 直接 import infra |
 | **infrastructure** | 實作 port、處理 I/O、依賴裝配（含 `composition.ts` wiring 與 `daemon-entry.ts` 內部進程入口） | 跨層被 domain/application 知道 |
-| **root entry** | 唯一使用者入口（`bot.ts`），載入 .env、呼叫 infrastructure/composition | 包含商業邏輯 |
+| **root entry** | 兩個進程入口：`bot.ts`（client）與 `daemon-entry.ts`（server），各自建 `Container` 取所需 adapter | 包含商業邏輯 |
 
 ### presentation/ 為何不使用
 
@@ -52,7 +52,9 @@ Hex 原本區分 driving adapter（input）/ driven adapter（output），實作
 
 ### composition.ts 與 daemon-entry.ts 歸屬（2026-05-27 拍板）
 
-`composition.ts` 放 `infrastructure/`。理由：依賴裝配是具體技術職責——若引入 DI framework（inversify / awilix），container config 自然屬 infrastructure；手寫 `new` 是同一件事的輕量版，放同一層保持一致。`daemon-entry.ts` 歸屬待議（見根層）。
+`composition.ts` 放 `infrastructure/`，實作為輕量 `Container` class（lazy DI）。理由：依賴裝配是具體技術職責——若引入 DI framework（inversify / awilix），container config 自然屬 infrastructure；手寫 `new` 是同一件事的輕量版，放同一層保持一致。
+
+`daemon-entry.ts` 與 `bot.ts` 並列根層。兩者都是進程入口，本質相同：各自建 `Container`、取所需 adapter、啟動 application service。差別只在方向——`bot.ts` 是 client（使用者互動），`daemon-entry.ts` 是 server（background 常駐）。「是否給使用者直接執行」不影響層的歸屬。
 
 ---
 
