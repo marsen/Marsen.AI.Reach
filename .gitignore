@@ -2,3 +2,5 @@ node_modules/
 dist/
 .env
 queue/
+.DS_Store
+.rai/

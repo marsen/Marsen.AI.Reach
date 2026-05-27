@@ -21,4 +21,5 @@ if [ "$branch" = "main" ] || [ "$branch" = "master" ]; then
   fi
 fi
 
+npm run lint
 npm test

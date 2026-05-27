@@ -1,0 +1,39 @@
+/**
+ * Client 端 adapter：用 Unix Domain Socket 實作 BotConnection。
+ * 每次呼叫開一條連線、送一行命令、收回應、關閉。
+ */
+import { createConnection } from 'net'
+import { text } from 'stream/consumers'
+import { type BotConnection, type ConfigPort, CONFIG } from '@ports'
+
+export class UnixSocketBotConnection implements BotConnection {
+  private readonly socketPath: string
+
+  constructor(config: ConfigPort) {
+    this.socketPath = config.get(CONFIG.SocketPath)
+  }
+
+  isAlive(): Promise<boolean> {
+    return new Promise((resolve) => {
+      const conn = createConnection(this.socketPath)
+      conn.once('connect', () => { conn.end(); resolve(true) })
+      conn.once('error', () => resolve(false))
+    })
+  }
+
+  async info(): Promise<{ workDir: string | null; sessionAlive: boolean; sessionName: string }> {
+    return JSON.parse(await this.send('info'))
+  }
+
+  async start(workDir: string): Promise<void> {
+    const r = await this.send(`start:${workDir}`)
+    if (r.startsWith('error:')) throw new Error(r.slice('error:'.length))
+  }
+
+  private async send(cmd: string): Promise<string> {
+    const conn = createConnection(this.socketPath)
+    conn.write(cmd + '\n')
+    // text() 把整條 socket stream 收成字串；daemon 寫完回應 conn.end() 後才 resolve
+    return (await text(conn)).trim()
+  }
+}
