@@ -5,10 +5,10 @@
  * 不是給使用者直接跑的。
  */
 import { createComposition } from './composition.js'
-import { EnvConfig } from './infrastructure/EnvConfig.js'
-import { Daemon } from './application/Daemon.js'
-import { ConversationMirror } from './application/services/ConversationMirror.js'
-import { log } from './infrastructure/FileLogger.js'
+import { EnvConfig } from './EnvConfig.js'
+import { Daemon } from '../application/Daemon.js'
+import { ConversationMirror } from '../application/services/ConversationMirror.js'
+import { log } from './FileLogger.js'
 
 // daemon 是 bot.ts spawn 的子進程，env 繼承自 bot.ts（已載 .env），此處不自行載 .env
 const config = new EnvConfig()

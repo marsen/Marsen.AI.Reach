@@ -24,10 +24,10 @@ src/
 │   ├── control/         # 例：UnixSocketBotConnection（host CLI ↔ daemon IPC）
 │   ├── platforms/       # 例：TelegramBot（chat 平台）
 │   ├── EnvConfig.ts     # 環境變數讀取（ConfigPort 實作）
-│   └── FileLogger.ts    # 寫檔 + console logger（LogPort 實作）
-├── composition.ts       # Port → Adapter mapping（位置見下 Q1）
-├── bot.ts               # 使用者主動執行的 entry
-└── daemon-entry.ts      # 被 bot spawn 的 daemon entry（位置見下 Q2）
+│   ├── FileLogger.ts    # 寫檔 + console logger（LogPort 實作）
+│   ├── composition.ts   # 依賴裝配（port → adapter wiring）
+│   └── daemon-entry.ts  # daemon 進程入口（被 bot spawn）
+└── bot.ts               # 唯一使用者入口（composition root 層）
 ```
 
 ### 依賴鐵則
@@ -43,35 +43,16 @@ src/
 | --- | --- | --- |
 | **domain** | 表達商業概念與規則 | 任何 I/O、framework |
 | **application** | 編排 domain、呼叫 port 取得外部能力 | 直接 import infra |
-| **infrastructure** | 實作 port、處理 I/O（HTTP、socket、DB、CLI、bot SDK 等都在此層） | 跨層被 domain/application 知道 |
-| **composition** | 介面 → 實作的綁定（Port → Adapter）；**不負責 wire entry** | 包含商業邏輯 |
-| **root entry** | 程式起點（main），從 composition 拿 instance 開工 | 包含商業邏輯 |
+| **infrastructure** | 實作 port、處理 I/O、依賴裝配（含 `composition.ts` wiring 與 `daemon-entry.ts` 內部進程入口） | 跨層被 domain/application 知道 |
+| **root entry** | 唯一使用者入口（`bot.ts`），載入 .env、呼叫 infrastructure/composition | 包含商業邏輯 |
 
 ### presentation/ 為何不使用
 
 Hex 原本區分 driving adapter（input）/ driven adapter（output），實作上兩者都是邊界 adapter，分兩層在後端為主的專案職責重疊。**統一放 `infrastructure/`**，需要時用子資料夾分主題（`claude/`、`platforms/`、`ipc/`、`config/`）即可。
 
-### 待討論項目（暫緩，2026-05-23 決定先不拍板）
+### composition.ts 與 daemon-entry.ts 歸屬（2026-05-27 拍板）
 
-`presentation/` 已淨空：`bot.ts`、`daemon-entry.ts` 與 `composition.ts` 三者**暫時都落根層 `src/`**，未對下面兩問做架構承諾，要再搬都可逆。
-
-#### Q1：composition.ts 放哪？
-
-| 選項 | 論點 |
-| --- | --- |
-| **A. 根層**（目前狀態） | 不屬於任何層；entry 跟 composition 都是邊界外 wiring，集中根層好找 |
-| **B. infrastructure/** | composition 只認識 port + adapter，沒理由放邊界外 |
-
-#### Q2：daemon-entry.ts 放哪？
-
-- bot.ts = 使用者**主動執行**的 entry（像 `main`）→ 共識放根層
-- daemon-entry.ts = 被 bot **spawn 出來**的內部 entry → 角色不同，放根層感覺怪
-
-選項：
-
-- A. 都放根（一致，**目前狀態**）
-- B. bot 放根、daemon-entry 進 `infrastructure/`（例如 `infrastructure/daemon/daemon-entry.ts`）
-- C. 開 `bootstrap/` 資料夾，兩個都進去
+兩者都放 `infrastructure/`。理由：依賴裝配（composition root）是具體技術職責——若引入 DI framework（inversify / awilix），container config 自然屬 infrastructure；手寫 `new` 是同一件事的輕量版，放同一層保持一致。`daemon-entry.ts` 是內部 spawned 進程（非使用者入口），與其他 infra 實作並列合理。根層只留 `bot.ts` 作為唯一使用者入口。
 
 ---
 
