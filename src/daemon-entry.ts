@@ -8,11 +8,10 @@ import { createComposition } from './infrastructure/composition'
 import { EnvConfig } from './infrastructure/EnvConfig'
 import { Daemon } from './application/Daemon'
 import { ConversationMirror } from './application/services/ConversationMirror'
-import { log } from './infrastructure/FileLogger'
 
 // daemon 是 bot.ts spawn 的子進程，env 繼承自 bot.ts（已載 .env），此處不自行載 .env
 const config = new EnvConfig()
-const { cliRunner, cliPaneIO, botConnection, bot } = createComposition(config)
+const { cliRunner, cliPaneIO, botConnection, bot, log } = createComposition(config)
 
 // 防呆：若已有 daemon 在跑就退出，避免兩個 daemon 競爭同一個 socket 檔
 if (await botConnection.isAlive()) {

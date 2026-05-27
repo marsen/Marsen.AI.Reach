@@ -3,7 +3,7 @@
  * 由 entry 注入 ConfigPort，需要設定的 adapter 從中取值。
  */
 
-import type { ConfigPort, CLIRunner, CLIPaneIO, ChatPort, BotConnection } from '@ports'
+import type { ConfigPort, CLIRunner, CLIPaneIO, ChatPort, BotConnection, LogPort } from '@ports'
 import { ClaudeRunner } from './cli/ClaudeRunner'
 import { UnixSocketBotConnection } from './control/UnixSocketBotConnection'
 import { TelegramBot } from './platforms/TelegramBot'
@@ -14,6 +14,7 @@ export interface Composition {
   cliPaneIO: CLIPaneIO
   botConnection: BotConnection
   bot: ChatPort
+  log: LogPort
 }
 
 export function createComposition(config: ConfigPort): Composition {
@@ -24,5 +25,6 @@ export function createComposition(config: ConfigPort): Composition {
     cliPaneIO: tmuxClaude,
     botConnection: new UnixSocketBotConnection(config),
     bot: new TelegramBot(config, log),
+    log,
   }
 }
