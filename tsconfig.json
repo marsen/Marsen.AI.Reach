@@ -4,7 +4,9 @@
     "module": "ESNext",
     "moduleResolution": "bundler",
     "paths": { "@ports": ["./src/application/ports/index.ts"] },
+    "types": ["node"],
     "strict": true,
+    "forceConsistentCasingInFileNames": true,
     "outDir": "dist",
     "rootDir": "src"
   },
