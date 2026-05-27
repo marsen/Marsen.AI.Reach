@@ -15,7 +15,7 @@ const LOG_PATH = join(homedir(), '.rai', 'logs', 'daemon.log')
 
 try { mkdirSync(dirname(LOG_PATH), { recursive: true }) } catch { /* 已存在或無權限：仍試著寫，失敗 fallback console */ }
 
-type Level = 'DEBUG' | 'INFO' | 'ERROR'
+type Level = 'DEBUG' | 'INFO' | 'WARN' | 'ERROR'
 
 function write(level: Level, msg: string): void {
   const line = `[${new Date().toISOString()}] [${level}] ${msg}`
@@ -27,6 +27,7 @@ function write(level: Level, msg: string): void {
 export const log: LogPort = {
   debug: (msg: string): void => write('DEBUG', msg),
   info: (msg: string): void => write('INFO', msg),
+  warn: (msg: string): void => write('WARN', msg),
   error: (msg: string, e?: unknown): void => {
     const detail = e instanceof Error ? `: ${e.message}` : e !== undefined ? `: ${String(e)}` : ''
     write('ERROR', msg + detail)
