@@ -19,12 +19,6 @@ const TMUX_SESSION = 'claude-reach'
 // === Claude CLI pane 文字解析（純函式，與 tmux/process 無關，可單元測試）===
 
 const PROMPT_RE = /❯[^\n]*\r?\n[-─]+/
-// 比對使用者已送出的訊息（不是底部空白輸入框）：❯ 後接空格再接非空白字
-const USER_INPUT_RE = /❯ [^\s].*/g
-// Claude 「思考中 / 已思考多少秒」的狀態列噪音
-const COOK_TIMER_RE = /^\s*✻ .+$/gm
-// 整行只有橫線（box drawing、半形 dash、全形 dash 等）的裝飾線
-const HORIZONTAL_LINE_RE = /^\s*[─━━－-]{3,}\s*$/gm
 
 function cleanAnsi(s: string): string {
   return s.replace(/\x1B\[[0-9;]*[a-zA-Z]/g, '')
@@ -42,11 +36,11 @@ function hasPrompt(output: string): boolean {
 export function extractLastExchange(pane: string): string {
   const clean = cleanAnsi(pane)
 
-  // 找最後一個使用者已送出的訊息
+  // 找最後一個使用者已送出的訊息（❯ 後接空格再接非空白字，排除底部空白輸入框）
+  const userInputRe = /❯ [^\s].*/g
   let lastMatch: RegExpExecArray | null = null
   let m: RegExpExecArray | null
-  USER_INPUT_RE.lastIndex = 0
-  while ((m = USER_INPUT_RE.exec(clean)) !== null) lastMatch = m
+  while ((m = userInputRe.exec(clean)) !== null) lastMatch = m
   if (!lastMatch) return ''
 
   // 從這則訊息開始，到下一個輸入框（PROMPT_RE）之前
@@ -57,10 +51,10 @@ export function extractLastExchange(pane: string): string {
     ? fromExchange
     : fromExchange.slice(0, lastMatch[0].length + promptIdx)
 
-  // 去 cook timer、整行裝飾線、收斂多餘空行
+  // 去 cook timer（✻ 思考中狀態列）、整行裝飾線（box drawing / dash）、收斂多餘空行
   return exchange
-    .replace(COOK_TIMER_RE, '')
-    .replace(HORIZONTAL_LINE_RE, '')
+    .replace(/^\s*✻ .+$/gm, '')
+    .replace(/^\s*[─━━－-]{3,}\s*$/gm, '')
     .replace(/\n{3,}/g, '\n\n')
     .trim()
 }
