@@ -8,11 +8,15 @@ import { ClaudeRunner } from './cli/ClaudeRunner'
 import { UnixSocketBotConnection } from './control/UnixSocketBotConnection'
 import { TelegramBot } from './platforms/TelegramBot'
 import { log } from './FileLogger'
+import { Daemon } from '../application/Daemon'
+import { ConversationMirror } from '../application/services/ConversationMirror'
 
 export class Container {
   private _tmuxClaude?: ClaudeRunner
   private _botConnection?: BotConnection
   private _bot?: ChatPort
+  private _daemon?: Daemon
+  private _mirror?: ConversationMirror
 
   constructor(private readonly config: ConfigPort) {}
 
@@ -31,6 +35,14 @@ export class Container {
 
   get log(): LogPort {
     return log
+  }
+
+  get daemon(): Daemon {
+    return this._daemon ??= new Daemon(this.cliRunner, this.config)
+  }
+
+  get mirror(): ConversationMirror {
+    return this._mirror ??= new ConversationMirror(this.bot, this.cliPaneIO, this.log)
   }
 
   private get tmuxClaude(): ClaudeRunner {

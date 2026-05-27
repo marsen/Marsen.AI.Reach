@@ -6,8 +6,6 @@
  */
 import { Container } from './infrastructure/composition'
 import { EnvConfig } from './infrastructure/EnvConfig'
-import { Daemon } from './application/Daemon'
-import { ConversationMirror } from './application/services/ConversationMirror'
 
 // daemon 是 bot.ts spawn 的子進程，env 繼承自 bot.ts（已載 .env），此處不自行載 .env
 const config = new EnvConfig()
@@ -19,18 +17,15 @@ if (await c.botConnection.isAlive()) {
   process.exit(0)
 }
 
-const mirror = new ConversationMirror(c.bot, c.cliPaneIO, c.log)
-
-const daemon = new Daemon(c.cliRunner, config)
-daemon.start()
+c.daemon.start()
 c.log.info('[daemon] socket listening')
-await mirror.start()
+await c.mirror.start()
 c.log.info('[daemon] mirror started')
 
 const shutdown = (): void => {
   void (async () => {
-    try { await mirror.stop() } catch { /* ignore */ }
-    daemon.close()
+    try { await c.mirror.stop() } catch { /* ignore */ }
+    c.daemon.close()
     process.exit(0)
   })()
 }
