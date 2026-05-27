@@ -19,7 +19,7 @@ const mockCLIPaneIO = (): CLIPaneIO => ({
   onMessage: vi.fn(),
 })
 
-const mockLog = (): LogPort => ({ debug: vi.fn(), info: vi.fn(), error: vi.fn() })
+const mockLog = (): LogPort => ({ debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() })
 
 // 建一筆 CLI emit；raw 預設組成「❯ user + 回覆」，需要時可覆寫
 const exchange = (user: string, response: string, raw = `❯ ${user}\n\n${response}`): PaneExchange =>
