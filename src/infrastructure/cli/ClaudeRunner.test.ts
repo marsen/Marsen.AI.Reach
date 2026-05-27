@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { extractLastExchange } from './ClaudeRunner'
+import { extractLastExchange, splitExchange } from './ClaudeRunner'
 
 describe('extractLastExchange', () => {
   it('抓最後一輪（user + Claude 回應），去除 cook timer 與輸入框', () => {
@@ -39,5 +39,24 @@ describe('extractLastExchange', () => {
   it('pane 還沒任何使用者訊息 → 回空字串', () => {
     const pane = ' ▐▛███▜▌  Claude Code\n\n❯ \n────'
     expect(extractLastExchange(pane)).toBe('')
+  })
+})
+
+describe('splitExchange', () => {
+  it('首行 ❯ 為 user（去前綴），其餘為 response，raw 原樣保留', () => {
+    const raw = '❯ 哪裡好笑？\n\n⏺ 因為八進位的 31 等於十進位的 25。'
+    const ex = splitExchange(raw)
+
+    expect(ex.user).toBe('哪裡好笑？')
+    expect(ex.response).toBe('⏺ 因為八進位的 31 等於十進位的 25。')
+    expect(ex.raw).toBe(raw)
+  })
+
+  it('多行 response 完整保留', () => {
+    const raw = '❯ 解釋一下\n\n第一段\n\n第二段'
+    const ex = splitExchange(raw)
+
+    expect(ex.user).toBe('解釋一下')
+    expect(ex.response).toBe('第一段\n\n第二段')
   })
 })
