@@ -144,14 +144,14 @@ export class ClaudeRunner implements CLIRunner, CLIPaneIO {
     // 空字串 = 還沒有使用者訊息（剛開 session）；下次再看。lastExchange 初值也是空，自然不會誤觸 emit。
     if (exchange && exchange !== this.lastExchange) {
       this.log.debug(`[pane] emit exchange (${exchange.length} chars)`)
-      this.dumpEmit(current, exchange) // TODO #166-debug: 暫時診斷 3 連 emit
+      if (process.env.RAI_DUMP_PANE) this.dumpEmit(current, exchange)
       for (const h of this.outputHandlers) h(exchange)
       this.lastExchange = exchange
     }
     this.stableCount = 0
   }
 
-  // TODO #166-debug: 暫時診斷碼，找完 3 連 emit 根因後移除
+  // RAI_DUMP_PANE=1 時寫檔診斷 emit 內容
   private dumpEmit(cleanedPane: string, exchange: string): void {
     try {
       const dir = join(homedir(), '.rai', 'logs', 'pane-dumps')

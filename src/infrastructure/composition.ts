@@ -12,6 +12,7 @@ import { log } from './FileLogger'
 export class Container {
   private _tmuxClaude?: ClaudeRunner
   private _botConnection?: BotConnection
+  private _bot?: ChatPort
 
   constructor(private readonly config: ConfigPort) {}
 
@@ -25,7 +26,7 @@ export class Container {
   }
 
   get bot(): ChatPort {
-    return new TelegramBot(this.config, log)
+    return this._bot ??= new TelegramBot(this.config, log)
   }
 
   get log(): LogPort {
