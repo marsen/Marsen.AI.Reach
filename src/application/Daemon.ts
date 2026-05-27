@@ -10,9 +10,8 @@ import { type CLIRunner, type ConfigPort, CONFIG } from '@ports'
  *   info             → 回 JSON: { workDir, sessionAlive, sessionName }
  *   start:<workDir>  → 一律新建 session（kill 舊建新），回 ok / error:<msg>
  *
- * 協定假設：每連線送一個命令（< 1KB）、收完一個回應就關。
- *   - 命令短（目前 max ~50 bytes），不會被 UDS chunk 拆
- *   - 若未來命令攜帶大 payload，需改成行協定（buffer 累積到 '\n' 才 dispatch）
+ * 協定：每連線送一個命令（< 1KB）、收完一個回應就關。
+ * TODO: 目前命令短不會被 UDS chunk 拆；若需大 payload 改行協定（buffer 累積到 '\n'）
  */
 export class Daemon {
   private server: Server | null = null

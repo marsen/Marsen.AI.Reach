@@ -9,8 +9,7 @@ import { homedir } from 'os'
 import { join } from 'path'
 import type { CLIRunner, CLIPaneIO, LogPort } from '@ports'
 
-// Claude CLI 啟動命令；之後要抽成環境變數 / 設定檔再改這裡
-const PREFIX = 'claude'
+const PREFIX = 'claude'  // TODO: 寫死，未來抽進 .env
 
 // tmux session 名：ClaudeRunner 擁有；透過 CLIRunner.sessionName 暴露給 Daemon，
 // daemon 再經 IPC（info 命令）回給 client，bot.ts 不直接 import。
@@ -31,7 +30,6 @@ function hasPrompt(output: string): boolean {
 /**
  * 抽取「最後一輪對話」：使用者送出的訊息 + Claude 的回覆，去除 banner、cook timer、輸入框邊線。
  * 找不到回合（pane 還沒任何使用者訊息）→ 回空字串。
- * export 供單元測試；ClaudeRunner.pollOnce 內部也用它。
  */
 export function extractLastExchange(pane: string): string {
   const clean = cleanAnsi(pane)
