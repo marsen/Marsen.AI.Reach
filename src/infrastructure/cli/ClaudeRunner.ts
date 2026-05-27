@@ -7,7 +7,7 @@ import { setTimeout as sleep } from 'timers/promises'
 import { mkdirSync, writeFileSync } from 'fs'
 import { homedir } from 'os'
 import { join } from 'path'
-import type { CLIRunner, CLIPaneIO, LogPort } from '@ports'
+import type { CLIRunner, CLIPaneIO, PaneExchange, LogPort } from '@ports'
 
 const PREFIX = 'claude'  // TODO: 寫死，未來抽進 .env
 
@@ -55,6 +55,17 @@ export function extractLastExchange(pane: string): string {
     .trim()
 }
 
+/**
+ * 把 extractLastExchange 的原始整段拆成結構化欄位。
+ * 首行是使用者輸入（`❯ ...`），其餘是 CLI 回覆。`❯` 規格只在此處被認得。
+ */
+export function splitExchange(raw: string): PaneExchange {
+  const lines = raw.split('\n')
+  const user = (lines[0] ?? '').replace(/^❯\s+/, '').trim()
+  const response = lines.slice(1).join('\n').trim()
+  return { user, response, raw }
+}
+
 export class ClaudeRunner implements CLIRunner, CLIPaneIO {
   readonly sessionName = TMUX_SESSION
 
@@ -70,7 +81,7 @@ export class ClaudeRunner implements CLIRunner, CLIPaneIO {
   } as const
 
   // 觀察狀態
-  private outputHandlers: Array<(text: string) => void> = []
+  private outputHandlers: Array<(exchange: PaneExchange) => void> = []
   private pollHandle: NodeJS.Timeout | null = null
   private lastExchange = ''   // 上次抓到的「user + Claude」對話對
   private lastSeen = ''       // 最近一次 capture 結果（用來偵測穩定）
@@ -96,7 +107,7 @@ export class ClaudeRunner implements CLIRunner, CLIPaneIO {
     if (r.status !== 0) throw new Error(`tmux send-keys 失敗：${r.stderr?.toString() ?? '(no stderr)'}`)
   }
 
-  onMessage(handler: (text: string) => void): void {
+  onMessage(handler: (exchange: PaneExchange) => void): void {
     this.outputHandlers.push(handler)
     if (!this.pollHandle) {
       this.pollHandle = setInterval(() => this.pollOnce(), ClaudeRunner.CONFIG.POLL_INTERVAL_MS)
@@ -132,10 +143,12 @@ export class ClaudeRunner implements CLIRunner, CLIPaneIO {
     // 抽出最後一輪「user + Claude 回覆」，去除 banner / cook timer / 輸入框
     const exchange = extractLastExchange(current)
     // 空字串 = 還沒有使用者訊息（剛開 session）；下次再看。lastExchange 初值也是空，自然不會誤觸 emit。
+    // 去重仍用原始整段字串比對，再 split 成結構交給 handler。
     if (exchange && exchange !== this.lastExchange) {
       this.log.debug(`[pane] emit exchange (${exchange.length} chars)`)
       if (process.env.RAI_DUMP_PANE) this.dumpEmit(current, exchange)
-      for (const h of this.outputHandlers) h(exchange)
+      const msg = splitExchange(exchange)
+      for (const h of this.outputHandlers) h(msg)
       this.lastExchange = exchange
     }
     this.stableCount = 0
