@@ -36,8 +36,7 @@ function hasPrompt(output: string): boolean {
 export function extractLastExchange(pane: string): string {
   const clean = cleanAnsi(pane)
 
-  // 找最後一個使用者已送出的訊息（❯ 後接空格再接非空白字，排除底部空白輸入框）
-  const userInputRe = /❯ [^\s].*/g
+  const userInputRe = /❯ [^\s].*/g  // ❯ 後接空格再接非空白字，排除底部空白輸入框
   let lastMatch: RegExpExecArray | null = null
   let m: RegExpExecArray | null
   while ((m = userInputRe.exec(clean)) !== null) lastMatch = m
@@ -51,10 +50,9 @@ export function extractLastExchange(pane: string): string {
     ? fromExchange
     : fromExchange.slice(0, lastMatch[0].length + promptIdx)
 
-  // 去 cook timer（✻ 思考中狀態列）、整行裝飾線（box drawing / dash）、收斂多餘空行
   return exchange
-    .replace(/^\s*✻ .+$/gm, '')
-    .replace(/^\s*[─━━－-]{3,}\s*$/gm, '')
+    .replace(/^\s*✻ .+$/gm, '')           // cook timer（思考中狀態列）
+    .replace(/^\s*[─━━－-]{3,}\s*$/gm, '') // 整行裝飾線（box drawing / dash）
     .replace(/\n{3,}/g, '\n\n')
     .trim()
 }
