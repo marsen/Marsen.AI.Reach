@@ -83,7 +83,7 @@ async function spawnDaemon(): Promise<void> {
 
 /** fork daemon-entry 成獨立 background process；三件套讓它脫離 bot 生命週期 */
 function forkDaemon(): void {
-  const daemonEntry = join(dirname(fileURLToPath(import.meta.url)), 'infrastructure', 'daemon-entry.ts')
+  const daemonEntry = join(dirname(fileURLToPath(import.meta.url)), 'daemon-entry.ts')
   // detached + stdio:'ignore' + unref() 三件一組：讓 daemon 脫離本 process，bot 結束後繼續活著
   const child = spawn(
     process.argv[0],

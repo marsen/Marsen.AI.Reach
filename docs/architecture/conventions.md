@@ -25,9 +25,9 @@ src/
 │   ├── platforms/       # 例：TelegramBot（chat 平台）
 │   ├── EnvConfig.ts     # 環境變數讀取（ConfigPort 實作）
 │   ├── FileLogger.ts    # 寫檔 + console logger（LogPort 實作）
-│   ├── composition.ts   # 依賴裝配（port → adapter wiring）
-│   └── daemon-entry.ts  # daemon 進程入口（被 bot spawn）
-└── bot.ts               # 唯一使用者入口（composition root 層）
+│   └── composition.ts   # 依賴裝配（port → adapter wiring）
+├── bot.ts               # 唯一使用者入口
+└── daemon-entry.ts      # daemon 進程入口（位置待議）
 ```
 
 ### 依賴鐵則
@@ -52,7 +52,7 @@ Hex 原本區分 driving adapter（input）/ driven adapter（output），實作
 
 ### composition.ts 與 daemon-entry.ts 歸屬（2026-05-27 拍板）
 
-兩者都放 `infrastructure/`。理由：依賴裝配（composition root）是具體技術職責——若引入 DI framework（inversify / awilix），container config 自然屬 infrastructure；手寫 `new` 是同一件事的輕量版，放同一層保持一致。`daemon-entry.ts` 是內部 spawned 進程（非使用者入口），與其他 infra 實作並列合理。根層只留 `bot.ts` 作為唯一使用者入口。
+`composition.ts` 放 `infrastructure/`。理由：依賴裝配是具體技術職責——若引入 DI framework（inversify / awilix），container config 自然屬 infrastructure；手寫 `new` 是同一件事的輕量版，放同一層保持一致。`daemon-entry.ts` 歸屬待議（見根層）。
 
 ---
 
