@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { ConversationMirror } from './ConversationMirror.js'
+import { ConversationMirror } from './ConversationMirror'
 import type { ChatPort, CLIPaneIO, LogPort } from '@ports'
 
 const mockBot = (): ChatPort => ({

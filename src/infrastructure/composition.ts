@@ -4,10 +4,10 @@
  */
 
 import type { ConfigPort, CLIRunner, CLIPaneIO, ChatPort, BotConnection } from '@ports'
-import { ClaudeRunner } from './cli/ClaudeRunner.js'
-import { UnixSocketBotConnection } from './control/UnixSocketBotConnection.js'
-import { TelegramBot } from './platforms/TelegramBot.js'
-import { log } from './FileLogger.js'
+import { ClaudeRunner } from './cli/ClaudeRunner'
+import { UnixSocketBotConnection } from './control/UnixSocketBotConnection'
+import { TelegramBot } from './platforms/TelegramBot'
+import { log } from './FileLogger'
 
 export interface Composition {
   cliRunner: CLIRunner

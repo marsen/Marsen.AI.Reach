@@ -12,8 +12,8 @@ import { fileURLToPath } from 'url'
 import { dirname, join } from 'path'
 import { setTimeout as sleep } from 'timers/promises'
 import { select } from '@inquirer/prompts'
-import { createComposition } from './infrastructure/composition.js'
-import { EnvConfig } from './infrastructure/EnvConfig.js'
+import { createComposition } from './infrastructure/composition'
+import { EnvConfig } from './infrastructure/EnvConfig'
 
 const { botConnection } = createComposition(new EnvConfig())
 
