@@ -13,7 +13,7 @@ const c = new Container(config)
 
 // 防呆：若已有 daemon 在跑就退出，避免兩個 daemon 競爭同一個 socket 檔
 if (await c.botConnection.isAlive()) {
-  c.log.info('[daemon] another instance is alive, exiting')
+  c.log.warn('[daemon] another instance is alive, exiting')
   process.exit(0)
 }
 
