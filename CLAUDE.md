@@ -26,6 +26,12 @@ Tech: Node.js + TypeScript (ESM) + grammY + @inquirer/prompts
 - [x] rai init 互動式精靈（@inquirer/prompts，已設定檢查）
 - [x] rai 選單支援 gum choose（無 gum 自動 fallback）
 - [x] Ghostty 捲動問題（tmux copy mode：Ctrl+B [）
+- [x] Husky pre-commit / pre-push hooks（白名單允許 CLAUDE.md/README.md 直接進 main）
+- [x] 進度通知 + 背景任務完成推送（每 30 秒「思考中」、watcher 統一管理）
+- [x] CLIPaneIO 結構化 emit（❯ 解析下沉至 infra）
+- [x] application service wiring 集中至 Container（lazy DI）
+- [x] logger LOG_LEVEL 門檻過濾（必填、fail-loud、預設放 .env.example；含 warn 級）
+- [x] Bug：daemon SIGTERM 間歇卡 mirror.stop()，shutdown 加 3s deadline 強制退出
 
 ## 架構文件
 
