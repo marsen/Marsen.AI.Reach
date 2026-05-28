@@ -3,11 +3,7 @@
   "version": "0.1.0",
   "description": "Bridge messaging apps to AI-powered host",
   "type": "module",
-  "bin": {
-    "rai": "bin/rai"
-  },
   "files": [
-    "bin/",
     "src/"
   ],
   "scripts": {
