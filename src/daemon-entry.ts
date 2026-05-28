@@ -22,7 +22,16 @@ c.log.info('[daemon] socket listening')
 await c.mirror.start()
 c.log.info('[daemon] mirror started')
 
+// grammy bot.stop() 會等當前 long-polling getUpdates 收尾，最長卡到 polling timeout，
+// 期間 process.exit(0) 走不到，導致 SIGTERM 殺不掉 daemon（要 kill -9）。
+// 加 deadline：清理逾時就強制退出，讓 SIGTERM 能正常終結進程。
+const SHUTDOWN_DEADLINE_MS = 3000
 const shutdown = (): void => {
+  const force = setTimeout(() => {
+    c.log.warn('[daemon] shutdown timed out, forcing exit')
+    process.exit(0)
+  }, SHUTDOWN_DEADLINE_MS)
+  force.unref()
   void (async () => {
     try { await c.mirror.stop() } catch { /* ignore */ }
     c.daemon.close()
