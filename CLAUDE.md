@@ -14,7 +14,7 @@ Tech: Node.js + TypeScript (ESM) + grammY + @inquirer/prompts
 - [x] 文件建置（README、CLAUDE.md、docs/architecture/）
 - [x] Claude binary 路徑移至 `.env`
 - [x] tmux 架構取代 spawn（session 持久化）
-- [x] CA 分層重構（domain / application / infrastructure；entry 落根層，不用 presentation）
+- [x] CA 分層重構（domain / application / infrastructure；entry 落根層，不用 presentation）（Backlog #166 ✅）
 - [x] Bug：ensureSession() 只檢查 tmux session 存在，未確認 claude process 仍在運行
 - [x] Unix socket 取代 PID file（IPC）
 - [x] rai CLI 工具（多專案、單實例防呆）
@@ -30,7 +30,7 @@ Tech: Node.js + TypeScript (ESM) + grammY + @inquirer/prompts
 - [x] 進度通知 + 背景任務完成推送（每 30 秒「思考中」、watcher 統一管理）
 - [x] CLIPaneIO 結構化 emit（❯ 解析下沉至 infra）
 - [x] application service wiring 集中至 Container（lazy DI）
-- [x] logger LOG_LEVEL 門檻過濾（必填、fail-loud、預設放 .env.example；含 warn 級）
+- [x] logger LOG_LEVEL 門檻過濾（必填、fail-loud、預設放 .env.example；含 warn 級）（Backlog #168 ✅）
 - [x] Bug：daemon SIGTERM 間歇卡 mirror.stop()，shutdown 加 3s deadline 強制退出
 
 ## 架構文件
