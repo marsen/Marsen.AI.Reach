@@ -99,6 +99,13 @@ export class ClaudeRunner implements CLIRunner, CLIPaneIO {
     return this.sessionExists() && this.isClaudeRunning()
   }
 
+  workDir(): string | null {
+    if (!this.sessionExists()) return null
+    const r = spawnSync('tmux', ['display-message', '-p', '-t', TMUX_SESSION, '#{pane_current_path}'], { stdio: 'pipe', encoding: 'utf-8' })
+    if (r.status !== 0) return null
+    return r.stdout.trim() || null
+  }
+
   // === CLIPaneIO ===
 
   async send(text: string): Promise<void> {

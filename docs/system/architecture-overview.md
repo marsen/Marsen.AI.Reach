@@ -52,4 +52,4 @@ TC 可切換為不同訊息服務（Telegram、LINE），透過 Platform Adapter
 
 - **共享媒介**：PC 與 TC 共用同一個 `claude-reach` tmux session
 - **IPC**：`rai` CLI 透過 Unix socket 與 bot 溝通
-- **常駐服務**：bot 透過 launchd 開機自動啟動
+- **常駐服務**：daemon 由首次 `rai` spawn（detached）後常駐，直到被手動結束
