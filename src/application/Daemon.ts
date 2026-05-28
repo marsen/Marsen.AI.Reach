@@ -15,7 +15,6 @@ import { type CLIRunner, type ConfigPort, CONFIG } from '@ports'
  */
 export class Daemon {
   private server: Server | null = null
-  private workDir: string | null = null
 
   private readonly socketPath: string
 
@@ -45,7 +44,7 @@ export class Daemon {
   private dispatch(cmd: string, conn: Socket): void {
     if (cmd === 'info') {
       conn.end(JSON.stringify({
-        workDir: this.workDir,
+        workDir: this.cliRunner.workDir(),
         sessionAlive: this.cliRunner.isAlive(),
         sessionName: this.cliRunner.sessionName
       }) + '\n')
@@ -54,7 +53,7 @@ export class Daemon {
     if (cmd.startsWith('start:')) {
       const dir = cmd.slice('start:'.length)
       this.cliRunner.start(dir)
-        .then(() => { this.workDir = dir; conn.end('ok\n') })
+        .then(() => conn.end('ok\n'))
         .catch((e: unknown) => conn.end(`error:${e instanceof Error ? e.message : String(e)}\n`))
       return
     }

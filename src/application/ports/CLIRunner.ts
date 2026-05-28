@@ -14,4 +14,10 @@ export interface CLIRunner {
    * 檢查是否活著
    */
   isAlive(): boolean
+
+  /**
+   * 執行中 session 的工作目錄;無 session 回 null。
+   * 直接問 session 本身(非快取),故 daemon 重啟也不會失真。
+   */
+  workDir(): string | null
 }

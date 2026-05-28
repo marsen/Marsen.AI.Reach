@@ -47,7 +47,7 @@ npx tsx src/bot.ts
 | --- | --- |
 | `TELEGRAM_BOT_TOKEN` | BotFather 給的 token |
 | `TELEGRAM_USER_ID` | 允許互動的 Telegram chat ID |
-| `SOCKET_PATH` | Unix socket 路徑，例：`/tmp/rai.sock` |
+| `SOCKET_PATH` | Unix socket 路徑；用固定路徑確保只有一個 daemon，例：`~/.rai/bot.sock` |
 
 ## 開發
 

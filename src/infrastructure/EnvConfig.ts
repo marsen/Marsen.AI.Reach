@@ -1,3 +1,5 @@
+import { homedir } from 'os'
+import { join } from 'path'
 import type { ConfigPort } from '@ports'
 
 /**
@@ -11,6 +13,7 @@ export class EnvConfig implements ConfigPort {
   get(key: string): string {
     const v = process.env[key]
     if (!v) throw new Error(`config "${key}" 未設定（檢查 .env）`)
-    return v
+    // ~/ 展開成 home：讓 SOCKET_PATH 用跟 cwd 無關的固定位置
+    return v.startsWith('~/') ? join(homedir(), v.slice(2)) : v
   }
 }
