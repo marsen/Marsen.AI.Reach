@@ -88,6 +88,8 @@ if (text.length > TELEGRAM_MAX_LEN) split(text)
 - 值需從環境取 → `const x = process.env.X` 後**顯式檢查**：`if (!x) throw new Error('X not set')`
 - 還沒決定來源 → 先寫死，等需要再改
 
+> **`LOG_LEVEL` 也走顯式檢查，不是例外**：`FileLogger` 啟動時 `resolveLevel(process.env.LOG_LEVEL)`，未設或非法值直接 throw（fail-loud）。「預設 INFO」這個值放 `.env.example`（顯式、進版控），不寫成 `?? 'INFO'` 的靜默 fallback。選用旋鈕的「預設」屬於配置檔的責任，不屬於程式碼。
+
 ### Fire-and-forget Promise 必須 `.catch(log)`
 
 用 `void`、不 `await` 的長壽 Promise（polling、subscribe、watcher 等），若中途 reject 沒人接，error 會被完全吞掉——服務已死但 log 沒記、健康檢查還回正常，問題排查無從下手。
